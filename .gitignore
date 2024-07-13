@@ -1,0 +1,9 @@
+# Ignore these directories
+build
+x64
+cmake-build-debug
+cmake-build-release
+idea
+
+# Ignore these files
+*.sln

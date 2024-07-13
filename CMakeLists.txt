@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.18)
+
+project(D3D12Wrapper LANGUAGES CXX C)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+file(GLOB_RECURSE SRCFILES CONFIGURE_DEPENDS 
+    "${CMAKE_CURRENT_LIST_DIR}/src/*.h"
+    "${CMAKE_CURRENT_LIST_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/src/*.def")
+
+add_library(d3d12 SHARED ${SRCFILES})
+target_include_directories(d3d12 PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+
+
