@@ -3,7 +3,7 @@ build
 x64
 cmake-build-debug
 cmake-build-release
-idea
+.idea
 
 # Ignore these files
 *.sln

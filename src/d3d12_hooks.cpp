@@ -2,47 +2,161 @@
 #include "d3d12_device_wrap.h"
 #include <libloaderapi.h>
 #include <minwindef.h>
+#include <cassert>
+#include <sstream>
+#include <iostream>
+#include <d3dcommon.h>
 
-struct D3D12Hook final : LibrayHook
+struct D3D12Hook
 {
+    using PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES = HRESULT(WINAPI *)(
+            UINT                                   NumFeatures,
+            _In_count_(NumFeatures) const IID*     pIIDs,
+            _In_opt_count_(NumFeatures) void*      pConfigurationStructs,
+            _In_opt_count_(NumFeatures) UINT*      pConfigurationStructSizes);
+
     PFN_D3D12_GET_DEBUG_INTERFACE pfn_get_debug_interface = nullptr;
     PFN_D3D12_GET_INTERFACE pfn_get_interface = nullptr;
+
     PFN_D3D12_CREATE_DEVICE pfn_create_device = nullptr;
 
-    D3D12Hook() = default;
-    ~D3D12Hook() final = default;
-    
-    void register_hooks() final
+    PFN_D3D12_SERIALIZE_ROOT_SIGNATURE pfn_serialize_root_signature = nullptr;
+    PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE pfn_serialize_versioned_root_signature = nullptr;
+
+    PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER pfn_create_root_signature_deserializer = nullptr;
+    PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER pfn_create_versioned_root_signature_deserializer = nullptr;
+
+    PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES pfn_enable_experimental_features = nullptr;
+
+    FARPROC pfn_core_create_layered_device = nullptr;
+    FARPROC pfn_core_get_layered_device_size = nullptr;
+    FARPROC pfn_core_register_layers = nullptr;
+
+    FARPROC pfn_device_removed_extended_data = nullptr;
+
+    FARPROC pfn_pix_events_replace_block = nullptr;
+    FARPROC pfn_pix_get_thread_info = nullptr;
+    FARPROC pfn_pix_notify_wake_from_fence_signal = nullptr;
+    FARPROC pfn_pix_report_counter = nullptr;
+
+    FARPROC pfn_get_behavior_value = nullptr;
+
+    FARPROC pfn_set_app_compat_string_pointer = nullptr;
+
+    HMODULE d3d12_module = nullptr;
+
+    D3D12Hook()
     {
-        HMODULE d3d12_module = GetModuleHandleA("d3d12.dll");
+        AllocConsole();
+        freopen_s((FILE **)stdout, "CONOUT$", "w", stdout);
+        d3d12_module = LoadLibraryA("C:/Windows/System32/D3D12.dll");
         if (d3d12_module)
         {
+            std::cout << "Successfully initialize DLL\n";
             pfn_get_debug_interface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(d3d12_module, "D3D12GetDebugInterface");
             pfn_get_interface = (PFN_D3D12_GET_INTERFACE)GetProcAddress(d3d12_module, "D3D12GetInterface");
             pfn_create_device = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(d3d12_module, "D3D12CreateDevice");
+            pfn_serialize_root_signature = (PFN_D3D12_SERIALIZE_ROOT_SIGNATURE)GetProcAddress(d3d12_module, "D3D12SerializeRootSignature");
+            pfn_serialize_versioned_root_signature = (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature");
+            pfn_create_root_signature_deserializer = (PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER)GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer");
+            pfn_create_versioned_root_signature_deserializer = (PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER)GetProcAddress(d3d12_module,
+                                                                                                "D3D12CreateVersionedRootSignatureDeserializer");
+            pfn_enable_experimental_features = (PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES)GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures");
+
+            pfn_core_create_layered_device = GetProcAddress(d3d12_module, "D3D12CoreCreateLayeredDevice");
+            pfn_core_get_layered_device_size = GetProcAddress(d3d12_module, "D3D12CoreGetLayeredDeviceSize");
+            pfn_core_register_layers = GetProcAddress(d3d12_module, "D3D12CoreRegisterLayers");
+
+            pfn_device_removed_extended_data = GetProcAddress(d3d12_module, "D3D12DeviceRemovedExtendedData");
+
+            pfn_pix_events_replace_block = GetProcAddress(d3d12_module, "D3D12PIXEventsReplaceBlock");
+            pfn_pix_get_thread_info = GetProcAddress(d3d12_module, "D3D12PIXGetThreadInfo");
+            pfn_pix_notify_wake_from_fence_signal = GetProcAddress(d3d12_module, "D3D12PIXNotifyWakeFromFenceSignal");
+            pfn_pix_report_counter = GetProcAddress(d3d12_module, "D3D12PIXReportCounter");
+
+            pfn_get_behavior_value = GetProcAddress(d3d12_module, "GetBehaviorValue");
+
+            pfn_set_app_compat_string_pointer = GetProcAddress(d3d12_module, "SetAppCompatStringPointer");
+        } else
+        {
+            std::cout << "Failed to initialize DLL\n";
         }
     }
 
-    void remove_hooks() final
+    ~D3D12Hook()
+    {
+        if (d3d12_module)
+        {
+            FreeLibrary(d3d12_module);
+            remove_hooks();
+        }
+    }
+
+    void remove_hooks()
     {
         pfn_get_debug_interface = nullptr;
         pfn_get_interface = nullptr;
         pfn_create_device = nullptr;
+        pfn_serialize_root_signature = nullptr;
+        pfn_serialize_versioned_root_signature = nullptr;
+        pfn_create_root_signature_deserializer = nullptr;
+        pfn_create_versioned_root_signature_deserializer = nullptr;
+
+        pfn_enable_experimental_features = nullptr;
+
+        pfn_core_create_layered_device = nullptr;
+        pfn_core_get_layered_device_size = nullptr;
+        pfn_core_register_layers = nullptr;
+
+        pfn_device_removed_extended_data = nullptr;
+
+        pfn_pix_events_replace_block = nullptr;
+        pfn_pix_get_thread_info = nullptr;
+        pfn_pix_notify_wake_from_fence_signal = nullptr;
+        pfn_pix_report_counter = nullptr;
+
+        pfn_get_behavior_value = nullptr;
+
+        pfn_set_app_compat_string_pointer = nullptr;
     }
 };
 
-inline static D3D12Hook s_d3d12_hook{};
+std::unique_ptr<D3D12Hook> s_d3d12_hook = std::make_unique<D3D12Hook>();
+
+HRESULT WINAPI D3D12GetDebugInterface( _In_ REFIID riid, _COM_Outptr_opt_ void** ppvDebug )
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_get_debug_interface)
+    {
+        return s_d3d12_hook->pfn_get_debug_interface(riid, ppvDebug);
+    }
+    return result;
+}
+
+HRESULT WINAPI D3D12GetInterface( _In_ REFCLSID rclsid, _In_ REFIID riid, _COM_Outptr_opt_ void** ppvDebug )
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_get_interface)
+    {
+        return s_d3d12_hook->pfn_get_interface(rclsid, riid, ppvDebug);
+    }
+    return result;
+}
 
 HRESULT WINAPI D3D12CreateDevice(
     _In_opt_ IUnknown* pAdapter,
     D3D_FEATURE_LEVEL MinimumFeatureLevel,
-    _In_ REFIID riid, // Expected: ID3D12Device
+    _In_ REFIID riid,
     _COM_Outptr_opt_ void** ppDevice )
 {
     HRESULT result = E_UNEXPECTED;
-    if (s_d3d12_hook.pfn_create_device)
+    assert(s_d3d12_hook->pfn_create_device && "CreateDeviceFuncPointer can not be nullptr");
+    if (s_d3d12_hook->pfn_create_device)
     {
-        result = s_d3d12_hook.pfn_create_device(pAdapter, MinimumFeatureLevel, riid, ppDevice);
+        result = s_d3d12_hook->pfn_create_device(pAdapter, MinimumFeatureLevel, riid, ppDevice);
+        std::cout << "D3DCreateDevice\n";
+        std::cout << "Result: " << result << '\n';
+        std::cout << "Device: " << ppDevice << '\n';
     } else
     {
         return E_UNEXPECTED;
@@ -54,53 +168,53 @@ HRESULT WINAPI D3D12CreateDevice(
 
         if(riid == __uuidof(ID3D12Device1))
         {
-          ID3D12Device1 *dev1 = (ID3D12Device1 *)*ppDevice;
-          real_device = (ID3D12Device *)dev1;
+            ID3D12Device1 *dev1 = (ID3D12Device1 *)*ppDevice;
+            real_device = (ID3D12Device *)dev1;
         }
         else if(riid == __uuidof(ID3D12Device2))
         {
-          ID3D12Device2 *dev2 = (ID3D12Device2 *)*ppDevice;
-          real_device = (ID3D12Device *)dev2;
+            ID3D12Device2 *dev2 = (ID3D12Device2 *)*ppDevice;
+            real_device = (ID3D12Device *)dev2;
         }
         else if(riid == __uuidof(ID3D12Device3))
         {
-          ID3D12Device3 *dev3 = (ID3D12Device3 *)*ppDevice;
-          real_device = (ID3D12Device *)dev3;
+            ID3D12Device3 *dev3 = (ID3D12Device3 *)*ppDevice;
+            real_device = (ID3D12Device *)dev3;
         }
         else if(riid == __uuidof(ID3D12Device4))
         {
-          ID3D12Device4 *dev4 = (ID3D12Device4 *)*ppDevice;
-          real_device = (ID3D12Device *)dev4;
+            ID3D12Device4 *dev4 = (ID3D12Device4 *)*ppDevice;
+            real_device = (ID3D12Device *)dev4;
         }
         else if(riid == __uuidof(ID3D12Device5))
         {
-          ID3D12Device5 *dev5 = (ID3D12Device5 *)*ppDevice;
-          real_device = (ID3D12Device *)dev5;
+            ID3D12Device5 *dev5 = (ID3D12Device5 *)*ppDevice;
+            real_device = (ID3D12Device *)dev5;
         }
         else if(riid == __uuidof(ID3D12Device6))
         {
-          ID3D12Device6 *dev6 = (ID3D12Device6 *)*ppDevice;
-          real_device = (ID3D12Device *)dev6;
+            ID3D12Device6 *dev6 = (ID3D12Device6 *)*ppDevice;
+            real_device = (ID3D12Device *)dev6;
         }
         else if(riid == __uuidof(ID3D12Device7))
         {
-          ID3D12Device7 *dev7 = (ID3D12Device7 *)*ppDevice;
-          real_device = (ID3D12Device *)dev7;
+            ID3D12Device7 *dev7 = (ID3D12Device7 *)*ppDevice;
+            real_device = (ID3D12Device *)dev7;
         }
         else if(riid == __uuidof(ID3D12Device8))
         {
-          ID3D12Device8 *dev8 = (ID3D12Device8 *)*ppDevice;
-          real_device = (ID3D12Device *)dev8;
+            ID3D12Device8 *dev8 = (ID3D12Device8 *)*ppDevice;
+            real_device = (ID3D12Device *)dev8;
         }
         else if(riid == __uuidof(ID3D12Device9))
         {
-          ID3D12Device9 *dev9 = (ID3D12Device9 *)*ppDevice;
-          real_device = (ID3D12Device *)dev9;
+            ID3D12Device9 *dev9 = (ID3D12Device9 *)*ppDevice;
+            real_device = (ID3D12Device *)dev9;
         }
         else if(riid == __uuidof(ID3D12Device10))
         {
-          ID3D12Device10 *dev10 = (ID3D12Device10 *)*ppDevice;
-          real_device = (ID3D12Device *)dev10;
+            ID3D12Device10 *dev10 = (ID3D12Device10 *)*ppDevice;
+            real_device = (ID3D12Device *)dev10;
         }
 
         WrappedID3D12Device *wrap_device = WrappedID3D12Device::create(real_device);
@@ -150,5 +264,185 @@ HRESULT WINAPI D3D12CreateDevice(
     }
 
     return result;
+}
+
+HRESULT WINAPI D3D12SerializeRootSignature(
+        _In_ const D3D12_ROOT_SIGNATURE_DESC* pRootSignature,
+        _In_ D3D_ROOT_SIGNATURE_VERSION Version,
+        _Out_ ID3DBlob** ppBlob,
+        _Always_(_Outptr_opt_result_maybenull_) ID3DBlob** ppErrorBlob)
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_serialize_root_signature)
+    {
+        return s_d3d12_hook->pfn_serialize_root_signature(pRootSignature, Version, ppBlob, ppErrorBlob);
+    }
+    return result;
+}
+
+HRESULT WINAPI D3D12SerializeVersionedRootSignature(
+        _In_ const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* pRootSignature,
+        _Out_ ID3DBlob** ppBlob,
+        _Always_(_Outptr_opt_result_maybenull_) ID3DBlob** ppErrorBlob)
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_serialize_versioned_root_signature)
+    {
+        return s_d3d12_hook->pfn_serialize_versioned_root_signature(pRootSignature, ppBlob, ppErrorBlob);
+    }
+    return result;
+}
+
+HRESULT WINAPI D3D12CreateRootSignatureDeserializer(
+        _In_reads_bytes_(SrcDataSizeInBytes) LPCVOID pSrcData,
+        _In_ SIZE_T SrcDataSizeInBytes,
+        _In_ REFIID pRootSignatureDeserializerInterface,
+        _Out_ void** ppRootSignatureDeserializer)
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_create_root_signature_deserializer)
+    {
+        return s_d3d12_hook->pfn_create_root_signature_deserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+    }
+    return result;
+}
+
+HRESULT WINAPI D3D12CreateVersionedRootSignatureDeserializer(
+        _In_reads_bytes_(SrcDataSizeInBytes) LPCVOID pSrcData,
+        _In_ SIZE_T SrcDataSizeInBytes,
+        _In_ REFIID pRootSignatureDeserializerInterface,
+        _Out_ void** ppRootSignatureDeserializer)
+{
+    HRESULT result = E_UNEXPECTED;
+    if (s_d3d12_hook->pfn_create_versioned_root_signature_deserializer)
+    {
+        return s_d3d12_hook->pfn_create_versioned_root_signature_deserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+    }
+    return result;
+}
+
+HRESULT WINAPI D3D12EnableExperimentalFeatures(
+        UINT                                    NumFeatures,
+        _In_count_(NumFeatures) const IID*     pIIDs,
+        _In_opt_count_(NumFeatures) void*      pConfigurationStructs,
+        _In_opt_count_(NumFeatures) UINT*      pConfigurationStructSizes)
+{
+    HRESULT result = E_INVALIDARG;
+    if (s_d3d12_hook->pfn_enable_experimental_features)
+    {
+        return s_d3d12_hook->pfn_enable_experimental_features(NumFeatures, pIIDs, pConfigurationStructs, pConfigurationStructSizes);
+    }
+    return result;
+}
+
+using DXGIFAC = HRESULT(WINAPI *)(REFIID, void **);
+
+HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
+{
+    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory");
+    if (!pfnCreateDXGIFactory)
+    {
+        return S_FALSE;
+    }
+
+    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
+
+    return result;
+}
+
+HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
+{
+    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory1");
+    if (!pfnCreateDXGIFactory)
+    {
+        return S_FALSE;
+    }
+
+    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
+
+    return result;
+}
+
+HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
+{
+    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory2");
+    if (!pfnCreateDXGIFactory)
+    {
+        return S_FALSE;
+    }
+
+    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
+
+    return result;
+}
+
+/* For functions with unknown public declarations: Rely on forwarding via ASM #jmp instruction (see dllAuxFwdAsm.asm)
+ * -> works for unknown prototypes AS LONG as the stack and registers remains untouched (=problematic for Debug builds)
+ */
+extern "C" void ProxyCallOrgFcnAsm(void);
+
+extern "C" FARPROC FcnPtrOrg = nullptr;
+
+extern "C"
+{
+    void ProxyD3D12CoreCreateLayeredDevice()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_core_create_layered_device;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12CoreGetLayeredDeviceSize()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_core_get_layered_device_size;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12CoreRegisterLayers()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_core_register_layers;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12DeviceRemovedExtendedData()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_device_removed_extended_data;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12PIXEventsReplaceBlock()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_pix_events_replace_block;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12PIXGetThreadInfo()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_pix_get_thread_info;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12PIXNotifyWakeFromFenceSignal()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_pix_notify_wake_from_fence_signal;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyD3D12PIXReportCounter()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_pix_report_counter;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxyGetBehaviorValue()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_get_behavior_value;
+        ProxyCallOrgFcnAsm();
+    }
+
+    void ProxySetAppCompatStringPointer()
+    {
+        FcnPtrOrg = s_d3d12_hook->pfn_set_app_compat_string_pointer;
+        ProxyCallOrgFcnAsm();
+    }
 }
 

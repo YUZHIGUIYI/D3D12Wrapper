@@ -1,9 +1,9 @@
 #include "hooks.h"
 #include <vector>
 
-static std::vector<LibrayHook *> &get_library_list()
+static std::vector<LibraryHook *> &get_library_list()
 {
-    static std::vector<LibrayHook *> libraries;
+    static std::vector<LibraryHook *> libraries;
     return libraries;
 }
 
@@ -23,7 +23,7 @@ void LibraryHookManager::remove_hooks()
     }
 }
 
-LibrayHook::LibrayHook()
+LibraryHook::LibraryHook()
 {
     get_library_list().push_back(this);
 }

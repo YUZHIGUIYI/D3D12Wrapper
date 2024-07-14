@@ -7,13 +7,13 @@ struct LibraryHookManager
     static void remove_hooks();
 };
 
-struct LibrayHook
+struct LibraryHook
 {
     friend struct LibraryHookManager;
 
-    LibrayHook();
+    LibraryHook();
 
-    virtual ~LibrayHook() = default;
+    virtual ~LibraryHook() = default;
     
     virtual void register_hooks() = 0;
 
