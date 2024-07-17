@@ -1,0 +1,30 @@
+LIBRARY d3d12.dll
+
+EXPORTS
+D3D12CreateDevice @101
+
+    D3D12GetDebugInterface @102
+    D3D12GetInterface
+
+    D3D12CreateRootSignatureDeserializer
+    D3D12CreateVersionedRootSignatureDeserializer
+
+    D3D12SerializeRootSignature
+    D3D12SerializeVersionedRootSignature
+
+    D3D12EnableExperimentalFeatures
+
+    D3D12CoreCreateLayeredDevice=ProxyD3D12CoreCreateLayeredDevice
+    D3D12CoreGetLayeredDeviceSize=ProxyD3D12CoreGetLayeredDeviceSize
+    D3D12CoreRegisterLayers=ProxyD3D12CoreRegisterLayers
+
+    D3D12DeviceRemovedExtendedData=ProxyD3D12DeviceRemovedExtendedData ;No export in D3D12.lib
+
+    D3D12PIXEventsReplaceBlock=ProxyD3D12PIXEventsReplaceBlock
+    D3D12PIXGetThreadInfo=ProxyD3D12PIXGetThreadInfo
+    D3D12PIXNotifyWakeFromFenceSignal=ProxyD3D12PIXNotifyWakeFromFenceSignal
+    D3D12PIXReportCounter=ProxyD3D12PIXReportCounter
+
+    GetBehaviorValue=ProxyGetBehaviorValue ;No export in D3D12.lib
+
+    SetAppCompatStringPointer=ProxySetAppCompatStringPointer ;No export in D3D12.lib

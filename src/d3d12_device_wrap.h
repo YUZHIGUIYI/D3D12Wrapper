@@ -42,8 +42,6 @@ private:
     ID3D12Device9  *m_pDevice9  = nullptr;
     ID3D12Device10 *m_pDevice10 = nullptr;
 
-    DXGI_ADAPTER_DESC m_dxgi_adapter_desc = {};
-
     static std::map<ID3D12Device *, WrappedID3D12Device *> m_device_wrappers;
 
 public:

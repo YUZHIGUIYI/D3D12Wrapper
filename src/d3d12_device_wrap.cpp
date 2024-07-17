@@ -347,8 +347,9 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource(const D3D
                                                         const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                         const IID &riidResource, void **ppvResource)
 {
-    return m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState, 
+    auto result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                             pOptimizedClearValue, riidResource, ppvResource);
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateHeap(const D3D12_HEAP_DESC *pDesc, const IID &riid, void **ppvHeap)

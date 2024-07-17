@@ -4,27 +4,27 @@ EXPORTS
     D3D12CreateDevice @101
 
     D3D12GetDebugInterface @102
-    D3D12GetInterface
+    D3D12GetInterface @117
 
-    D3D12CreateRootSignatureDeserializer
-    D3D12CreateVersionedRootSignatureDeserializer
+    D3D12CreateRootSignatureDeserializer @107
+    D3D12CreateVersionedRootSignatureDeserializer @108
 
-    D3D12SerializeRootSignature
-    D3D12SerializeVersionedRootSignature
+    D3D12SerializeRootSignature @115
+    D3D12SerializeVersionedRootSignature @116
 
-    D3D12EnableExperimentalFeatures
+    D3D12EnableExperimentalFeatures @110
 
-    D3D12CoreCreateLayeredDevice=ProxyD3D12CoreCreateLayeredDevice
-    D3D12CoreGetLayeredDeviceSize=ProxyD3D12CoreGetLayeredDeviceSize
-    D3D12CoreRegisterLayers=ProxyD3D12CoreRegisterLayers
+    D3D12CoreCreateLayeredDevice=d3d12_ms.D3D12CoreCreateLayeredDevice @104
+    D3D12CoreGetLayeredDeviceSize=d3d12_ms.D3D12CoreGetLayeredDeviceSize @105
+    D3D12CoreRegisterLayers=d3d12_ms.D3D12CoreRegisterLayers @106
 
-    D3D12DeviceRemovedExtendedData=ProxyD3D12DeviceRemovedExtendedData ;No export in D3D12.lib
+    D3D12DeviceRemovedExtendedData=d3d12_ms.D3D12DeviceRemovedExtendedData @109
 
-    D3D12PIXEventsReplaceBlock=ProxyD3D12PIXEventsReplaceBlock
-    D3D12PIXGetThreadInfo=ProxyD3D12PIXGetThreadInfo
-    D3D12PIXNotifyWakeFromFenceSignal=ProxyD3D12PIXNotifyWakeFromFenceSignal
-    D3D12PIXReportCounter=ProxyD3D12PIXReportCounter
+    D3D12PIXEventsReplaceBlock=d3d12_ms.D3D12PIXEventsReplaceBlock @111
+    D3D12PIXGetThreadInfo=d3d12_ms.D3D12PIXGetThreadInfo @112
+    D3D12PIXNotifyWakeFromFenceSignal=d3d12_ms.D3D12PIXNotifyWakeFromFenceSignal @113
+    D3D12PIXReportCounter=d3d12_ms.D3D12PIXReportCounter @114
 
-    GetBehaviorValue=ProxyGetBehaviorValue ;No export in D3D12.lib
+    GetBehaviorValue=d3d12_ms.GetBehaviorValue @100
 
-    SetAppCompatStringPointer=ProxySetAppCompatStringPointer ;No export in D3D12.lib
+    SetAppCompatStringPointer=d3d12_ms.SetAppCompatStringPointer @103

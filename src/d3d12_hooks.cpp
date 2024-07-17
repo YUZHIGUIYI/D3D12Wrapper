@@ -1,4 +1,3 @@
-#include "hooks.h"
 #include "d3d12_device_wrap.h"
 #include <libloaderapi.h>
 #include <minwindef.h>
@@ -28,21 +27,6 @@ struct D3D12Hook
 
     PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES pfn_enable_experimental_features = nullptr;
 
-    FARPROC pfn_core_create_layered_device = nullptr;
-    FARPROC pfn_core_get_layered_device_size = nullptr;
-    FARPROC pfn_core_register_layers = nullptr;
-
-    FARPROC pfn_device_removed_extended_data = nullptr;
-
-    FARPROC pfn_pix_events_replace_block = nullptr;
-    FARPROC pfn_pix_get_thread_info = nullptr;
-    FARPROC pfn_pix_notify_wake_from_fence_signal = nullptr;
-    FARPROC pfn_pix_report_counter = nullptr;
-
-    FARPROC pfn_get_behavior_value = nullptr;
-
-    FARPROC pfn_set_app_compat_string_pointer = nullptr;
-
     HMODULE d3d12_module = nullptr;
 
     D3D12Hook()
@@ -62,21 +46,6 @@ struct D3D12Hook
             pfn_create_versioned_root_signature_deserializer = (PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER)GetProcAddress(d3d12_module,
                                                                                                 "D3D12CreateVersionedRootSignatureDeserializer");
             pfn_enable_experimental_features = (PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES)GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures");
-
-            pfn_core_create_layered_device = GetProcAddress(d3d12_module, "D3D12CoreCreateLayeredDevice");
-            pfn_core_get_layered_device_size = GetProcAddress(d3d12_module, "D3D12CoreGetLayeredDeviceSize");
-            pfn_core_register_layers = GetProcAddress(d3d12_module, "D3D12CoreRegisterLayers");
-
-            pfn_device_removed_extended_data = GetProcAddress(d3d12_module, "D3D12DeviceRemovedExtendedData");
-
-            pfn_pix_events_replace_block = GetProcAddress(d3d12_module, "D3D12PIXEventsReplaceBlock");
-            pfn_pix_get_thread_info = GetProcAddress(d3d12_module, "D3D12PIXGetThreadInfo");
-            pfn_pix_notify_wake_from_fence_signal = GetProcAddress(d3d12_module, "D3D12PIXNotifyWakeFromFenceSignal");
-            pfn_pix_report_counter = GetProcAddress(d3d12_module, "D3D12PIXReportCounter");
-
-            pfn_get_behavior_value = GetProcAddress(d3d12_module, "GetBehaviorValue");
-
-            pfn_set_app_compat_string_pointer = GetProcAddress(d3d12_module, "SetAppCompatStringPointer");
         } else
         {
             std::cout << "Failed to initialize DLL\n";
@@ -103,21 +72,6 @@ struct D3D12Hook
         pfn_create_versioned_root_signature_deserializer = nullptr;
 
         pfn_enable_experimental_features = nullptr;
-
-        pfn_core_create_layered_device = nullptr;
-        pfn_core_get_layered_device_size = nullptr;
-        pfn_core_register_layers = nullptr;
-
-        pfn_device_removed_extended_data = nullptr;
-
-        pfn_pix_events_replace_block = nullptr;
-        pfn_pix_get_thread_info = nullptr;
-        pfn_pix_notify_wake_from_fence_signal = nullptr;
-        pfn_pix_report_counter = nullptr;
-
-        pfn_get_behavior_value = nullptr;
-
-        pfn_set_app_compat_string_pointer = nullptr;
     }
 };
 
@@ -335,114 +289,29 @@ HRESULT WINAPI D3D12EnableExperimentalFeatures(
     return result;
 }
 
-using DXGIFAC = HRESULT(WINAPI *)(REFIID, void **);
-
-HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory)
+BOOL WINAPI DllMain(HINSTANCE hinst_dll, DWORD fdw_reason, LPVOID lpv_reserved)
 {
-    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory");
-    if (!pfnCreateDXGIFactory)
+    switch (fdw_reason)
     {
-        return S_FALSE;
+        case DLL_PROCESS_DETACH:
+        {
+            // Only cleanup if the process is not exiting
+            if (lpv_reserved == nullptr)
+            {
+                s_d3d12_hook.reset();
+            }
+            break;
+        }
+        default:
+            break;
     }
 
-    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
-
-    return result;
+    return TRUE;
 }
 
-HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory)
-{
-    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory1");
-    if (!pfnCreateDXGIFactory)
-    {
-        return S_FALSE;
-    }
 
-    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
 
-    return result;
-}
 
-HRESULT WINAPI CreateDXGIFactory2(REFIID riid, void **ppFactory)
-{
-    DXGIFAC pfnCreateDXGIFactory = (DXGIFAC)GetProcAddress(s_d3d12_hook->d3d12_module, "CreateDXGIFactory2");
-    if (!pfnCreateDXGIFactory)
-    {
-        return S_FALSE;
-    }
 
-    HRESULT result = pfnCreateDXGIFactory(riid, ppFactory);
 
-    return result;
-}
-
-/* For functions with unknown public declarations: Rely on forwarding via ASM #jmp instruction (see dllAuxFwdAsm.asm)
- * -> works for unknown prototypes AS LONG as the stack and registers remains untouched (=problematic for Debug builds)
- */
-extern "C" void ProxyCallOrgFcnAsm(void);
-
-extern "C" FARPROC FcnPtrOrg = nullptr;
-
-extern "C"
-{
-    void ProxyD3D12CoreCreateLayeredDevice()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_core_create_layered_device;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12CoreGetLayeredDeviceSize()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_core_get_layered_device_size;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12CoreRegisterLayers()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_core_register_layers;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12DeviceRemovedExtendedData()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_device_removed_extended_data;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12PIXEventsReplaceBlock()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_pix_events_replace_block;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12PIXGetThreadInfo()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_pix_get_thread_info;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12PIXNotifyWakeFromFenceSignal()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_pix_notify_wake_from_fence_signal;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyD3D12PIXReportCounter()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_pix_report_counter;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxyGetBehaviorValue()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_get_behavior_value;
-        ProxyCallOrgFcnAsm();
-    }
-
-    void ProxySetAppCompatStringPointer()
-    {
-        FcnPtrOrg = s_d3d12_hook->pfn_set_app_compat_string_pointer;
-        ProxyCallOrgFcnAsm();
-    }
-}
 
