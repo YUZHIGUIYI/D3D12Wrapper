@@ -1,4 +1,4 @@
-#include "d3d12_command_queue.h"
+#include "d3d12_command_queue_wrap.h"
 
 WrappedD3D12CommandQueue::WrappedD3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device)
 : m_pQueue(real_command_queue), m_wrapped_device(wrapped_device)

@@ -1,31 +1,226 @@
 #pragma once
 
-#include <Windows.h>
-#include <d3d12.h>
-#include <dxgi.h>
-#include <dxgi1_2.h>
-#include <dxgi1_3.h>
-#include <dxgi1_4.h>
-#include <dxgi1_5.h>
-#include <dxgi1_6.h>
+#include "d3d12_wrap_common.h"
+#include <unordered_map>
+#include <mutex>
 
-#include <map>
+namespace gfxshim
+{
+    class ID3D12DeviceWrapper : public ID3D12ObjectWrapper
+    {
+    private:
+        static std::unordered_map<IUnknown *, ID3D12DeviceWrapper *> m_device_wrapper_map;
+        static std::mutex m_device_wrapper_lock;
 
-#if defined(max)
-    #undef max
-#endif
+    public:
+        ID3D12DeviceWrapper(REFIID riid, IUnknown *object);
 
-#if defined(min)
-    #undef min
-#endif
+        ~ID3D12DeviceWrapper() override;
 
-#if defined(near)
-    #undef near
-#endif
+        virtual UINT STDMETHODCALLTYPE GetNodeCount();
 
-#if defined(far)
-    #undef far
-#endif
+        virtual HRESULT STDMETHODCALLTYPE CreateCommandQueue(
+                const D3D12_COMMAND_QUEUE_DESC* pDesc,
+                REFIID riid,
+                void** ppCommandQueue);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateCommandAllocator(
+                D3D12_COMMAND_LIST_TYPE type,
+                REFIID riid,
+                void** ppCommandAllocator);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateGraphicsPipelineState(
+                const D3D12_GRAPHICS_PIPELINE_STATE_DESC* pDesc,
+                REFIID riid,
+                void** ppPipelineState);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateComputePipelineState(
+                const D3D12_COMPUTE_PIPELINE_STATE_DESC* pDesc,
+                REFIID riid,
+                void** ppPipelineState);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateCommandList(
+                UINT nodeMask,
+                D3D12_COMMAND_LIST_TYPE type,
+                ID3D12CommandAllocator* pCommandAllocator,
+                ID3D12PipelineState* pInitialState,
+                REFIID riid,
+                void** ppCommandList);
+
+        virtual HRESULT STDMETHODCALLTYPE CheckFeatureSupport(
+                D3D12_FEATURE Feature,
+                void* pFeatureSupportData,
+                UINT FeatureSupportDataSize);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateDescriptorHeap(
+                const D3D12_DESCRIPTOR_HEAP_DESC* pDescriptorHeapDesc,
+                REFIID riid,
+                void** ppvHeap);
+
+        virtual UINT STDMETHODCALLTYPE GetDescriptorHandleIncrementSize(
+                D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapType);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateRootSignature(
+                UINT nodeMask,
+                const void* pBlobWithRootSignature,
+                SIZE_T blobLengthInBytes,
+                REFIID riid,
+                void** ppvRootSignature);
+
+        virtual void STDMETHODCALLTYPE CreateConstantBufferView(
+                const D3D12_CONSTANT_BUFFER_VIEW_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CreateShaderResourceView(
+                ID3D12Resource* pResource,
+                const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CreateUnorderedAccessView(
+                ID3D12Resource* pResource,
+                ID3D12Resource* pCounterResource,
+                const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CreateRenderTargetView(
+                ID3D12Resource* pResource,
+                const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CreateDepthStencilView(
+                ID3D12Resource* pResource,
+                const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CreateSampler(
+                const D3D12_SAMPLER_DESC* pDesc,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
+
+        virtual void STDMETHODCALLTYPE CopyDescriptors(
+                UINT NumDestDescriptorRanges,
+                const D3D12_CPU_DESCRIPTOR_HANDLE* pDestDescriptorRangeStarts,
+                const UINT* pDestDescriptorRangeSizes,
+                UINT NumSrcDescriptorRanges,
+                const D3D12_CPU_DESCRIPTOR_HANDLE* pSrcDescriptorRangeStarts,
+                const UINT* pSrcDescriptorRangeSizes,
+                D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType);
+
+        virtual void STDMETHODCALLTYPE CopyDescriptorsSimple(
+                UINT NumDescriptors,
+                D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptorRangeStart,
+                D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorRangeStart,
+                D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType);
+
+        virtual D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE GetResourceAllocationInfo(
+                UINT visibleMask,
+                UINT numResourceDescs,
+                const D3D12_RESOURCE_DESC* pResourceDescs);
+
+        virtual D3D12_HEAP_PROPERTIES STDMETHODCALLTYPE GetCustomHeapProperties(
+                UINT nodeMask,
+                D3D12_HEAP_TYPE heapType);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateCommittedResource(
+                const D3D12_HEAP_PROPERTIES* pHeapProperties,
+                D3D12_HEAP_FLAGS HeapFlags,
+                const D3D12_RESOURCE_DESC* pDesc,
+                D3D12_RESOURCE_STATES InitialResourceState,
+                const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+                REFIID riidResource,
+                void** ppvResource);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateHeap(
+                const D3D12_HEAP_DESC* pDesc,
+                REFIID riid,
+                void** ppvHeap);
+
+        virtual HRESULT STDMETHODCALLTYPE CreatePlacedResource(
+                ID3D12Heap* pHeap,
+                UINT64 HeapOffset,
+                const D3D12_RESOURCE_DESC* pDesc,
+                D3D12_RESOURCE_STATES InitialState,
+                const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+                REFIID riid,
+                void** ppvResource);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateReservedResource(
+                const D3D12_RESOURCE_DESC* pDesc,
+                D3D12_RESOURCE_STATES InitialState,
+                const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+                REFIID riid,
+                void** ppvResource);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateSharedHandle(
+                ID3D12DeviceChild* pObject,
+                const SECURITY_ATTRIBUTES* pAttributes,
+                DWORD Access,
+                LPCWSTR Name,
+                HANDLE* pHandle);
+
+        virtual HRESULT STDMETHODCALLTYPE OpenSharedHandle(
+                HANDLE NTHandle,
+                REFIID riid,
+                void** ppvObj);
+
+        virtual HRESULT STDMETHODCALLTYPE OpenSharedHandleByName(
+                LPCWSTR Name,
+                DWORD Access,
+                HANDLE* pNTHandle);
+
+        virtual HRESULT STDMETHODCALLTYPE MakeResident(
+                UINT NumObjects,
+                ID3D12Pageable* const* ppObjects);
+
+        virtual HRESULT STDMETHODCALLTYPE Evict(
+                UINT NumObjects,
+                ID3D12Pageable* const* ppObjects);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateFence(
+                UINT64 InitialValue,
+                D3D12_FENCE_FLAGS Flags,
+                REFIID riid,
+                void** ppFence);
+
+        virtual HRESULT STDMETHODCALLTYPE GetDeviceRemovedReason();
+
+        virtual void STDMETHODCALLTYPE GetCopyableFootprints(
+                const D3D12_RESOURCE_DESC* pResourceDesc,
+                UINT FirstSubresource,
+                UINT NumSubresources,
+                UINT64 BaseOffset,
+                D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts,
+                UINT* pNumRows,
+                UINT64* pRowSizeInBytes,
+                UINT64* pTotalBytes);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateQueryHeap(
+                const D3D12_QUERY_HEAP_DESC* pDesc,
+                REFIID riid,
+                void** ppvHeap);
+
+        virtual HRESULT STDMETHODCALLTYPE SetStablePowerState(
+                BOOL Enable);
+
+        virtual HRESULT STDMETHODCALLTYPE CreateCommandSignature(
+                const D3D12_COMMAND_SIGNATURE_DESC* pDesc,
+                ID3D12RootSignature* pRootSignature,
+                REFIID riid,
+                void** ppvCommandSignature);
+
+        virtual void STDMETHODCALLTYPE GetResourceTiling(
+                ID3D12Resource* pTiledResource,
+                UINT* pNumTilesForEntireResource,
+                D3D12_PACKED_MIP_INFO* pPackedMipDesc,
+                D3D12_TILE_SHAPE* pStandardTileShapeForNonPackedMips,
+                UINT* pNumSubresourceTilings,
+                UINT FirstSubresourceTilingToGet,
+                D3D12_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips);
+
+        virtual LUID STDMETHODCALLTYPE GetAdapterLuid();
+
+        ULONG STDMETHODCALLTYPE Release() override;
+    };
+}
 
 class WrappedID3D12Device final : public ID3D12Device10
 {
@@ -42,7 +237,7 @@ private:
     ID3D12Device9  *m_pDevice9  = nullptr;
     ID3D12Device10 *m_pDevice10 = nullptr;
 
-    static std::map<ID3D12Device *, WrappedID3D12Device *> m_device_wrappers;
+    static std::unordered_map<ID3D12Device *, WrappedID3D12Device *> m_device_wrappers;
 
 public:
     explicit WrappedID3D12Device(ID3D12Device *real_device);
@@ -57,19 +252,19 @@ public:
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) final;
 
-	// Implement ID3D12Object
-	HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData) final;
+    // Implement ID3D12Object
+    HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData) final;
 
-	HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID guid, UINT DataSize, const void *pData) final;
+    HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID guid, UINT DataSize, const void *pData) final;
 
-	HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID guid, const IUnknown *pData) final;
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID guid, const IUnknown *pData) final;
 
-	HRESULT STDMETHODCALLTYPE SetName(LPCWSTR Name) final;
+    HRESULT STDMETHODCALLTYPE SetName(LPCWSTR Name) final;
 
     // Implement ID3D12Device
     UINT STDMETHODCALLTYPE GetNodeCount() final;
 
-	LUID STDMETHODCALLTYPE GetAdapterLuid() final;
+    LUID STDMETHODCALLTYPE GetAdapterLuid() final;
 
     HRESULT STDMETHODCALLTYPE CreateCommandQueue(const D3D12_COMMAND_QUEUE_DESC *pDesc, const IID &riid, void **ppCommandQueue) final;
 

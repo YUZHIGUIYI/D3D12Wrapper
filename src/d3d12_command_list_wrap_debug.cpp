@@ -1,5 +1,4 @@
-#include "d3d12_command_list.h"
-#include <winerror.h>
+#include "d3d12_command_list_wrap.h"
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::QueryInterface(REFIID riid, void **ppvObject)
 {

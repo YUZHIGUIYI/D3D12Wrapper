@@ -1,4 +1,438 @@
-#include "d3d12_command_list.h"
+#include "d3d12_command_list_wrap.h"
+
+namespace gfxshim
+{
+    // ID3D12CommandListWrapper
+    ID3D12CommandListWrapper::ID3D12CommandListWrapper(const IID &riid, IUnknown *object)
+    : ID3D12DeviceChildWrapper(riid, object)
+    {
+
+    }
+
+    ID3D12CommandListWrapper::~ID3D12CommandListWrapper() = default;
+
+    D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE ID3D12CommandListWrapper::GetType()
+    {
+        return GetWrappedObjectAs<ID3D12CommandList>()->GetType();
+    }
+
+    // ID3D12GraphicsCommandListWrapper
+    ID3D12GraphicsCommandListWrapper::ID3D12GraphicsCommandListWrapper(const IID &riid, IUnknown *object)
+    : ID3D12CommandListWrapper(riid, object)
+    {
+
+    }
+
+    ID3D12GraphicsCommandListWrapper::~ID3D12GraphicsCommandListWrapper() = default;
+
+    HRESULT STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::Close()
+    {
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Close();
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::Reset(
+            ID3D12CommandAllocator* pAllocator,
+            ID3D12PipelineState* pInitialState)
+    {
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Reset(pAllocator, pInitialState);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearState(
+            ID3D12PipelineState* pPipelineState)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearState(pPipelineState);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::DrawInstanced(
+            UINT VertexCountPerInstance,
+            UINT InstanceCount,
+            UINT StartVertexLocation,
+            UINT StartInstanceLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawInstanced(VertexCountPerInstance, InstanceCount, StartInstanceLocation, StartInstanceLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::DrawIndexedInstanced(
+            UINT IndexCountPerInstance,
+            UINT InstanceCount,
+            UINT StartIndexLocation,
+            INT BaseVertexLocation,
+            UINT StartInstanceLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartInstanceLocation,
+                                                                                BaseVertexLocation, StartInstanceLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::Dispatch(
+            UINT ThreadGroupCountX,
+            UINT ThreadGroupCountY,
+            UINT ThreadGroupCountZ)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyBufferRegion(
+            ID3D12Resource* pDstBuffer,
+            UINT64 DstOffset,
+            ID3D12Resource* pSrcBuffer,
+            UINT64 SrcOffset,
+            UINT64 NumBytes)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyBufferRegion(pDstBuffer, DstOffset, pSrcBuffer, SrcOffset, NumBytes);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyTextureRegion(
+            const D3D12_TEXTURE_COPY_LOCATION* pDst,
+            UINT DstX,
+            UINT DstY,
+            UINT DstZ,
+            const D3D12_TEXTURE_COPY_LOCATION* pSrc,
+            const D3D12_BOX* pSrcBox)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTextureRegion(pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyResource(
+            ID3D12Resource* pDstResource,
+            ID3D12Resource* pSrcResource)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyResource(pDstResource, pSrcResource);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyTiles(
+            ID3D12Resource* pTiledResource,
+            const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate,
+            const D3D12_TILE_REGION_SIZE* pTileRegionSize,
+            ID3D12Resource* pBuffer,
+            UINT64 BufferStartOffsetInBytes,
+            D3D12_TILE_COPY_FLAGS Flags)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTiles(pTiledResource, pTileRegionStartCoordinate, pTileRegionSize,
+                                                                    pBuffer, BufferStartOffsetInBytes, Flags);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResolveSubresource(
+            ID3D12Resource* pDstResource,
+            UINT DstSubresource,
+            ID3D12Resource* pSrcResource,
+            UINT SrcSubresource,
+            DXGI_FORMAT Format)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveSubresource(pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::IASetPrimitiveTopology(
+            D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->IASetPrimitiveTopology(PrimitiveTopology);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::RSSetViewports(
+            UINT NumViewports,
+            const D3D12_VIEWPORT* pViewports)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->RSSetViewports(NumViewports, pViewports);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::RSSetScissorRects(
+            UINT NumRects,
+            const D3D12_RECT* pRects)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->RSSetScissorRects(NumRects, pRects);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::OMSetBlendFactor(
+            const FLOAT BlendFactor [4])
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->OMSetBlendFactor(BlendFactor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::OMSetStencilRef(
+            UINT StencilRef)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->OMSetStencilRef(StencilRef);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetPipelineState(
+            ID3D12PipelineState* pPipelineState)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPipelineState(pPipelineState);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResourceBarrier(
+            UINT NumBarriers,
+            const D3D12_RESOURCE_BARRIER* pBarriers)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResourceBarrier(NumBarriers, pBarriers);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ExecuteBundle(
+            ID3D12GraphicsCommandList* pCommandList)
+    {
+        // TODO: check
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteBundle(pCommandList);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetDescriptorHeaps(
+            UINT NumDescriptorHeaps,
+            ID3D12DescriptorHeap* const* ppDescriptorHeaps)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetDescriptorHeaps(NumDescriptorHeaps, ppDescriptorHeaps);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootSignature(
+            ID3D12RootSignature* pRootSignature)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootSignature(pRootSignature);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootSignature(
+            ID3D12RootSignature* pRootSignature)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootSignature(pRootSignature);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootDescriptorTable(
+            UINT RootParameterIndex,
+            D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootDescriptorTable(
+            UINT RootParameterIndex,
+            D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRoot32BitConstant(
+            UINT RootParameterIndex,
+            UINT SrcData,
+            UINT DestOffsetIn32BitValues)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRoot32BitConstant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRoot32BitConstant(
+            UINT RootParameterIndex,
+            UINT SrcData,
+            UINT DestOffsetIn32BitValues)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRoot32BitConstant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRoot32BitConstants(
+            UINT RootParameterIndex,
+            UINT Num32BitValuesToSet,
+            const void* pSrcData,
+            UINT DestOffsetIn32BitValues)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRoot32BitConstants(
+            UINT RootParameterIndex,
+            UINT Num32BitValuesToSet,
+            const void* pSrcData,
+            UINT DestOffsetIn32BitValues)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootConstantBufferView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootConstantBufferView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootConstantBufferView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootConstantBufferView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootShaderResourceView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootShaderResourceView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootShaderResourceView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootShaderResourceView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootUnorderedAccessView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootUnorderedAccessView(
+            UINT RootParameterIndex,
+            D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::IASetIndexBuffer(
+            const D3D12_INDEX_BUFFER_VIEW* pView)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->IASetIndexBuffer(pView);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::IASetVertexBuffers(
+            UINT StartSlot,
+            UINT NumViews,
+            const D3D12_VERTEX_BUFFER_VIEW* pViews)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->IASetVertexBuffers(StartSlot, NumViews, pViews);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SOSetTargets(
+            UINT StartSlot,
+            UINT NumViews,
+            const D3D12_STREAM_OUTPUT_BUFFER_VIEW* pViews)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SOSetTargets(StartSlot, NumViews, pViews);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::OMSetRenderTargets(
+            UINT NumRenderTargetDescriptors,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors,
+            BOOL RTsSingleHandleToDescriptorRange,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->OMSetRenderTargets(NumRenderTargetDescriptors, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearDepthStencilView(
+            D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView,
+            D3D12_CLEAR_FLAGS ClearFlags,
+            FLOAT Depth,
+            UINT8 Stencil,
+            UINT NumRects,
+            const D3D12_RECT* pRects)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearDepthStencilView(DepthStencilView, ClearFlags, Depth, Stencil, NumRects, pRects);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearRenderTargetView(
+            D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView,
+            const FLOAT ColorRGBA [4],
+            UINT NumRects,
+            const D3D12_RECT* pRects)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearRenderTargetView(RenderTargetView, ColorRGBA, NumRects, pRects);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearUnorderedAccessViewUint(
+            D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap,
+            D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle,
+            ID3D12Resource* pResource,
+            const UINT Values [4],
+            UINT NumRects,
+            const D3D12_RECT* pRects)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewUint(ViewGPUHandleInCurrentHeap, ViewCPUHandle, pResource,
+                                                                                        Values, NumRects, pRects);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearUnorderedAccessViewFloat(
+            D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap,
+            D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle,
+            ID3D12Resource* pResource,
+            const FLOAT Values [4],
+            UINT NumRects,
+            const D3D12_RECT* pRects)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewFloat(ViewGPUHandleInCurrentHeap, ViewCPUHandle, pResource,
+                                                                                        Values, NumRects, pRects);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::DiscardResource(
+            ID3D12Resource* pResource,
+            const D3D12_DISCARD_REGION* pRegion)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DiscardResource(pResource, pRegion);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::BeginQuery(
+            ID3D12QueryHeap* pQueryHeap,
+            D3D12_QUERY_TYPE Type,
+            UINT Index)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->BeginQuery(pQueryHeap, Type, Index);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::EndQuery(
+            ID3D12QueryHeap* pQueryHeap,
+            D3D12_QUERY_TYPE Type,
+            UINT Index)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->EndQuery(pQueryHeap, Type, Index);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResolveQueryData(
+            ID3D12QueryHeap* pQueryHeap,
+            D3D12_QUERY_TYPE Type,
+            UINT StartIndex,
+            UINT NumQueries,
+            ID3D12Resource* pDestinationBuffer,
+            UINT64 AlignedDestinationBufferOffset)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveQueryData(pQueryHeap, Type, StartIndex, NumQueries,
+                                                                            pDestinationBuffer, AlignedDestinationBufferOffset);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetPredication(
+            ID3D12Resource* pBuffer,
+            UINT64 AlignedBufferOffset,
+            D3D12_PREDICATION_OP Operation)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPredication(pBuffer, AlignedBufferOffset, Operation);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetMarker(
+            UINT Metadata,
+            const void* pData,
+            UINT Size)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetMarker(Metadata, pData, Size);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::BeginEvent(
+            UINT Metadata,
+            const void* pData,
+            UINT Size)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->BeginEvent(Metadata, pData, Size);
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::EndEvent()
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->EndEvent();
+    }
+
+    void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ExecuteIndirect(
+            ID3D12CommandSignature* pCommandSignature,
+            UINT MaxCommandCount,
+            ID3D12Resource* pArgumentBuffer,
+            UINT64 ArgumentBufferOffset,
+            ID3D12Resource* pCountBuffer,
+            UINT64 CountBufferOffset)
+    {
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer,
+                                                                            ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+    }
+}
 
 WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device)
 : m_pList(real_command_list), m_wrapped_device(wrapped_device)

@@ -1,10 +1,354 @@
 #include "d3d12_device_wrap.h"
-#include "d3d12_command_queue.h"
-#include "d3d12_command_list.h"
-#include <d3d12.h>
-#include <winnt.h>
+#include "d3d12_command_queue_wrap.h"
+#include "d3d12_command_list_wrap.h"
 
-std::map<ID3D12Device *, WrappedID3D12Device *> WrappedID3D12Device::m_device_wrappers;
+namespace gfxshim
+{
+    std::unordered_map<IUnknown *, ID3D12DeviceWrapper *> ID3D12DeviceWrapper::m_device_wrapper_map;
+
+    std::mutex ID3D12DeviceWrapper::m_device_wrapper_lock;
+
+    ID3D12DeviceWrapper::ID3D12DeviceWrapper(REFIID riid, IUnknown *object)
+    : ID3D12ObjectWrapper(riid, object)
+    {
+
+    }
+
+    ID3D12DeviceWrapper::~ID3D12DeviceWrapper() = default;
+
+    UINT STDMETHODCALLTYPE ID3D12DeviceWrapper::GetNodeCount()
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetNodeCount();
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommandQueue(
+            const D3D12_COMMAND_QUEUE_DESC* pDesc,
+            REFIID riid,
+            void** ppCommandQueue)
+    {
+        HRESULT result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandQueue(pDesc, riid, ppCommandQueue);
+        // TODO: add custom command queue
+        return result;
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommandAllocator(
+            D3D12_COMMAND_LIST_TYPE type,
+            REFIID riid,
+            void** ppCommandAllocator)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandAllocator(type, riid, ppCommandAllocator);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateGraphicsPipelineState(
+            const D3D12_GRAPHICS_PIPELINE_STATE_DESC* pDesc,
+            REFIID riid,
+            void** ppPipelineState)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateGraphicsPipelineState(pDesc, riid, ppPipelineState);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateComputePipelineState(
+            const D3D12_COMPUTE_PIPELINE_STATE_DESC* pDesc,
+            REFIID riid,
+            void** ppPipelineState)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateComputePipelineState(pDesc, riid, ppPipelineState);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommandList(
+            UINT nodeMask,
+            D3D12_COMMAND_LIST_TYPE type,
+            ID3D12CommandAllocator* pCommandAllocator,
+            ID3D12PipelineState* pInitialState,
+            REFIID riid,
+            void** ppCommandList)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, ppCommandList);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CheckFeatureSupport(
+            D3D12_FEATURE Feature,
+            void* pFeatureSupportData,
+            UINT FeatureSupportDataSize)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateDescriptorHeap(
+            const D3D12_DESCRIPTOR_HEAP_DESC* pDescriptorHeapDesc,
+            REFIID riid,
+            void** ppvHeap)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateDescriptorHeap(pDescriptorHeapDesc, riid, ppvHeap);
+    }
+
+    UINT STDMETHODCALLTYPE ID3D12DeviceWrapper::GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapType)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetDescriptorHandleIncrementSize(DescriptorHeapType);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateRootSignature(
+            UINT nodeMask,
+            const void* pBlobWithRootSignature,
+            SIZE_T blobLengthInBytes,
+            REFIID riid,
+            void** ppvRootSignature)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, ppvRootSignature);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateConstantBufferView(
+            const D3D12_CONSTANT_BUFFER_VIEW_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateConstantBufferView(pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateShaderResourceView(
+            ID3D12Resource* pResource,
+            const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateShaderResourceView(pResource, pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateUnorderedAccessView(
+            ID3D12Resource* pResource,
+            ID3D12Resource* pCounterResource,
+            const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateUnorderedAccessView(pResource, pCounterResource, pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateRenderTargetView(
+            ID3D12Resource* pResource,
+            const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateRenderTargetView(pResource, pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateDepthStencilView(
+            ID3D12Resource* pResource,
+            const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateDepthStencilView(pResource, pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateSampler(
+            const D3D12_SAMPLER_DESC* pDesc,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CreateSampler(pDesc, DestDescriptor);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CopyDescriptors(
+            UINT NumDestDescriptorRanges,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pDestDescriptorRangeStarts,
+            const UINT* pDestDescriptorRangeSizes,
+            UINT NumSrcDescriptorRanges,
+            const D3D12_CPU_DESCRIPTOR_HANDLE* pSrcDescriptorRangeStarts,
+            const UINT* pSrcDescriptorRangeSizes,
+            D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CopyDescriptors(NumDestDescriptorRanges, pDestDescriptorRangeStarts, pDestDescriptorRangeSizes, NumSrcDescriptorRanges,
+                                                            pSrcDescriptorRangeStarts, pSrcDescriptorRangeSizes, DescriptorHeapsType);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::CopyDescriptorsSimple(
+            UINT NumDescriptors,
+            D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptorRangeStart,
+            D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorRangeStart,
+            D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->CopyDescriptorsSimple(NumDescriptors, DestDescriptorRangeStart, SrcDescriptorRangeStart, DescriptorHeapsType);
+    }
+
+    D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE ID3D12DeviceWrapper::GetResourceAllocationInfo(
+            UINT visibleMask,
+            UINT numResourceDescs,
+            const D3D12_RESOURCE_DESC* pResourceDescs)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetResourceAllocationInfo(visibleMask, numResourceDescs, pResourceDescs);
+    }
+
+    D3D12_HEAP_PROPERTIES STDMETHODCALLTYPE ID3D12DeviceWrapper::GetCustomHeapProperties(
+            UINT nodeMask,
+            D3D12_HEAP_TYPE heapType)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetCustomHeapProperties(nodeMask, heapType);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommittedResource(
+            const D3D12_HEAP_PROPERTIES* pHeapProperties,
+            D3D12_HEAP_FLAGS HeapFlags,
+            const D3D12_RESOURCE_DESC* pDesc,
+            D3D12_RESOURCE_STATES InitialResourceState,
+            const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+            REFIID riidResource,
+            void** ppvResource)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
+                                                                           pOptimizedClearValue, riidResource, ppvResource);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateHeap(
+            const D3D12_HEAP_DESC* pDesc,
+            REFIID riid,
+            void** ppvHeap)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateHeap(pDesc, riid, ppvHeap);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreatePlacedResource(
+            ID3D12Heap* pHeap,
+            UINT64 HeapOffset,
+            const D3D12_RESOURCE_DESC* pDesc,
+            D3D12_RESOURCE_STATES InitialState,
+            const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+            REFIID riid,
+            void** ppvResource)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreatePlacedResource(pHeap, HeapOffset, pDesc, InitialState,
+                                                                        pOptimizedClearValue, riid, ppvResource);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateReservedResource(
+            const D3D12_RESOURCE_DESC* pDesc,
+            D3D12_RESOURCE_STATES InitialState,
+            const D3D12_CLEAR_VALUE* pOptimizedClearValue,
+            REFIID riid,
+            void** ppvResource)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateReservedResource(pDesc, InitialState, pOptimizedClearValue, riid, ppvResource);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateSharedHandle(
+            ID3D12DeviceChild* pObject,
+            const SECURITY_ATTRIBUTES* pAttributes,
+            DWORD Access,
+            LPCWSTR Name,
+            HANDLE* pHandle)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateSharedHandle(pObject, pAttributes, Access, Name, pHandle);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::OpenSharedHandle(
+            HANDLE NTHandle,
+            REFIID riid,
+            void** ppvObj)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->OpenSharedHandle(NTHandle, riid, ppvObj);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::OpenSharedHandleByName(
+            LPCWSTR Name,
+            DWORD Access,
+            HANDLE* pNTHandle)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->OpenSharedHandleByName(Name, Access, pNTHandle);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::MakeResident(
+            UINT NumObjects,
+            ID3D12Pageable* const* ppObjects)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->MakeResident(NumObjects, ppObjects);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::Evict(
+            UINT NumObjects,
+            ID3D12Pageable* const* ppObjects)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->Evict(NumObjects, ppObjects);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateFence(
+            UINT64 InitialValue,
+            D3D12_FENCE_FLAGS Flags,
+            REFIID riid,
+            void** ppFence)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateFence(InitialValue, Flags, riid, ppFence);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::GetDeviceRemovedReason()
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetDeviceRemovedReason();
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::GetCopyableFootprints(
+            const D3D12_RESOURCE_DESC* pResourceDesc,
+            UINT FirstSubresource,
+            UINT NumSubresources,
+            UINT64 BaseOffset,
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts,
+            UINT* pNumRows,
+            UINT64* pRowSizeInBytes,
+            UINT64* pTotalBytes)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->GetCopyableFootprints(pResourceDesc, FirstSubresource, NumSubresources, BaseOffset,
+                                                                  pLayouts, pNumRows, pRowSizeInBytes, pTotalBytes);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateQueryHeap(
+            const D3D12_QUERY_HEAP_DESC* pDesc,
+            REFIID riid,
+            void** ppvHeap)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateQueryHeap(pDesc, riid, ppvHeap);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::SetStablePowerState(
+            BOOL Enable)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->SetStablePowerState(Enable);
+    }
+
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommandSignature(
+            const D3D12_COMMAND_SIGNATURE_DESC* pDesc,
+            ID3D12RootSignature* pRootSignature,
+            REFIID riid,
+            void** ppvCommandSignature)
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandSignature(pDesc, pRootSignature, riid, ppvCommandSignature);
+    }
+
+    void STDMETHODCALLTYPE ID3D12DeviceWrapper::GetResourceTiling(
+            ID3D12Resource* pTiledResource,
+            UINT* pNumTilesForEntireResource,
+            D3D12_PACKED_MIP_INFO* pPackedMipDesc,
+            D3D12_TILE_SHAPE* pStandardTileShapeForNonPackedMips,
+            UINT* pNumSubresourceTilings,
+            UINT FirstSubresourceTilingToGet,
+            D3D12_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips)
+    {
+        GetWrappedObjectAs<ID3D12Device>()->GetResourceTiling(pTiledResource, pNumTilesForEntireResource, pPackedMipDesc, pStandardTileShapeForNonPackedMips,
+                                                              pNumSubresourceTilings, FirstSubresourceTilingToGet, pSubresourceTilingsForNonPackedMips);
+    }
+
+    LUID STDMETHODCALLTYPE ID3D12DeviceWrapper::GetAdapterLuid()
+    {
+        return GetWrappedObjectAs<ID3D12Device>()->GetAdapterLuid();
+    }
+
+    ULONG STDMETHODCALLTYPE ID3D12DeviceWrapper::Release()
+    {
+        auto result = IUnknownWrapper::Release();
+
+        if (result == 0)
+        {
+            delete this;
+        }
+
+        return result;
+    }
+}
+
+std::unordered_map<ID3D12Device *, WrappedID3D12Device *> WrappedID3D12Device::m_device_wrappers;
 
 WrappedID3D12Device *WrappedID3D12Device::create(ID3D12Device *real_device)
 {
@@ -34,21 +378,6 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
         m_pDevice->QueryInterface(__uuidof(ID3D12Device8), (void **)&m_pDevice8);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device9), (void **)&m_pDevice9);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device10), (void **)&m_pDevice10);
-    }
-
-    if (m_pDevice)
-    {
-        // using PFN_CREATE_DXGI_FACTORY =  HRESULT(WINAPI *)(REFIID, void **);
-        // PFN_CREATE_DXGI_FACTORY create_dxgi_factory_func = (PFN_CREATE_DXGI_FACTORY)GetProcAddress(
-        //     GetModuleHandleA("dxgi.dll"), "CreateDXGIFactory1");
-    
-        // IDXGIFactory1 *temp_factory = nullptr;
-        // HRESULT result  = create_dxgi_factory_func(__uuidof(IDXGIFactory1), (void **)&temp_factory);
-
-        // if (temp_factory)
-        // {
-
-        // }
     }
 
     {
