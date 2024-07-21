@@ -304,13 +304,13 @@ struct WrappedID3D12DebugCommandList final : public ID3D12DebugCommandList2
 
     // Implement ID3D12DebugCommandList1 / ID3D12DebugCommandList2
     HRESULT STDMETHODCALLTYPE SetDebugParameter(D3D12_DEBUG_COMMAND_LIST_PARAMETER_TYPE Type,
-                                            	const void *pData, UINT DataSize) final;
+                                                const void *pData, UINT DataSize) final;
 
     HRESULT STDMETHODCALLTYPE GetDebugParameter(D3D12_DEBUG_COMMAND_LIST_PARAMETER_TYPE Type,
                                                 void *pData, UINT DataSize) final;
 };
 
-class WrappedID3D12GraphicsCommandList final : public ID3D12GraphicsCommandList7
+class WrappedID3D12GraphicsCommandList : public ID3D12GraphicsCommandList7
 {
 private:
     ID3D12GraphicsCommandList  *m_pList  = nullptr;
@@ -327,7 +327,7 @@ private:
     WrappedID3D12DebugCommandList m_wrapped_debug = {};
 
 public:
-	WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device);
+    WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device);
 
 public:
     // Implement IUnknown
@@ -355,8 +355,7 @@ public:
     // Implement ID3D12GraphicsCommandList
     HRESULT STDMETHODCALLTYPE Close() final;
 
-    HRESULT STDMETHODCALLTYPE Reset(ID3D12CommandAllocator *pAllocator,
-                                  ID3D12PipelineState *pInitialState) final;
+    HRESULT STDMETHODCALLTYPE Reset(ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState) final;
 
     void STDMETHODCALLTYPE ClearState(ID3D12PipelineState *pPipelineState) final;
 
@@ -548,8 +547,7 @@ public:
                                         const D3D12_WRITEBUFFERIMMEDIATE_MODE *pModes) final;
 
     // Implement ID3D12GraphicsCommandList3
-    void STDMETHODCALLTYPE SetProtectedResourceSession(
-                		ID3D12ProtectedResourceSession *pProtectedResourceSession) final;
+    void STDMETHODCALLTYPE SetProtectedResourceSession(ID3D12ProtectedResourceSession *pProtectedResourceSession) final;
 
     // Implement ID3D12GraphicsCommandList4
     void STDMETHODCALLTYPE BeginRenderPass(UINT NumRenderTargets,

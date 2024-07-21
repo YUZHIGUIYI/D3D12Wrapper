@@ -104,111 +104,27 @@ HRESULT WINAPI D3D12CreateDevice(
     if (s_d3d12_hook->pfn_create_device)
     {
         result = s_d3d12_hook->pfn_create_device(pAdapter, MinimumFeatureLevel, riid, ppDevice);
-        std::cout << "D3DCreateDevice\n";
-        std::cout << "Result: " << result << '\n';
-        std::cout << "Device: " << ppDevice << '\n';
+        std::cout << "Call D3DCreateDevice\n";
+        if (ppDevice != nullptr && (*ppDevice != nullptr))
+        {
+            std::cout << "Real device pointer: " << *ppDevice << '\n';
+        }
     }
 
-//    if(SUCCEEDED(result) && ppDevice)
-//    {
-//        ID3D12Device *real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
-//
-//        if(riid == __uuidof(ID3D12Device1))
-//        {
-//            ID3D12Device1 *dev1 = (ID3D12Device1 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev1;
-//        }
-//        else if(riid == __uuidof(ID3D12Device2))
-//        {
-//            ID3D12Device2 *dev2 = (ID3D12Device2 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev2;
-//        }
-//        else if(riid == __uuidof(ID3D12Device3))
-//        {
-//            ID3D12Device3 *dev3 = (ID3D12Device3 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev3;
-//        }
-//        else if(riid == __uuidof(ID3D12Device4))
-//        {
-//            ID3D12Device4 *dev4 = (ID3D12Device4 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev4;
-//        }
-//        else if(riid == __uuidof(ID3D12Device5))
-//        {
-//            ID3D12Device5 *dev5 = (ID3D12Device5 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev5;
-//        }
-//        else if(riid == __uuidof(ID3D12Device6))
-//        {
-//            ID3D12Device6 *dev6 = (ID3D12Device6 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev6;
-//        }
-//        else if(riid == __uuidof(ID3D12Device7))
-//        {
-//            ID3D12Device7 *dev7 = (ID3D12Device7 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev7;
-//        }
-//        else if(riid == __uuidof(ID3D12Device8))
-//        {
-//            ID3D12Device8 *dev8 = (ID3D12Device8 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev8;
-//        }
-//        else if(riid == __uuidof(ID3D12Device9))
-//        {
-//            ID3D12Device9 *dev9 = (ID3D12Device9 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev9;
-//        }
-//        else if(riid == __uuidof(ID3D12Device10))
-//        {
-//            ID3D12Device10 *dev10 = (ID3D12Device10 *)*ppDevice;
-//            real_device = (ID3D12Device *)dev10;
-//        }
-//
-//        WrappedID3D12Device *wrap_device = WrappedID3D12Device::create(real_device);
-//
-//        *ppDevice = (ID3D12Device *)wrap_device;
-//
-//        if(riid == __uuidof(ID3D12Device1))
-//        {
-//            *ppDevice = (ID3D12Device1 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device2))
-//        {
-//            *ppDevice = (ID3D12Device2 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device3))
-//        {
-//            *ppDevice = (ID3D12Device3 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device4))
-//        {
-//            *ppDevice = (ID3D12Device4 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device5))
-//        {
-//            *ppDevice = (ID3D12Device5 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device6))
-//        {
-//            *ppDevice = (ID3D12Device6 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device7))
-//        {
-//            *ppDevice = (ID3D12Device7 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device8))
-//        {
-//            *ppDevice = (ID3D12Device8 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device9))
-//        {
-//            *ppDevice = (ID3D12Device9 *)wrap_device;
-//        }
-//        else if(riid == __uuidof(ID3D12Device10))
-//        {
-//            *ppDevice = (ID3D12Device10 *)wrap_device;
-//        }
-//    }
+    if(SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
+    {
+        ID3D12Device *real_device = nullptr;
+
+        if(riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
+            riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
+            riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
+        {
+            real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
+            WrappedID3D12Device *wrapped_device = WrappedID3D12Device::create(real_device);
+            *ppDevice = wrapped_device;
+            std::cout << "Fake device pointer: " << wrapped_device << '\n';
+        }
+    }
 
     return result;
 }

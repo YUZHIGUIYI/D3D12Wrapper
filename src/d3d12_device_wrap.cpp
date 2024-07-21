@@ -1,6 +1,7 @@
 #include "d3d12_device_wrap.h"
 #include "d3d12_command_queue_wrap.h"
 #include "d3d12_command_list_wrap.h"
+#include <iostream>
 
 namespace gfxshim
 {
@@ -348,13 +349,14 @@ namespace gfxshim
     }
 }
 
-std::unordered_map<ID3D12Device *, WrappedID3D12Device *> WrappedID3D12Device::m_device_wrappers;
+std::unordered_map<ID3D12Device *, WrappedID3D12Device *> WrappedID3D12Device::m_device_wrappers_map;
+std::mutex WrappedID3D12Device::m_device_wrappers_mutex;
 
 WrappedID3D12Device *WrappedID3D12Device::create(ID3D12Device *real_device)
 {
-    // TODO: mutex
-    auto it = m_device_wrappers.find(real_device);
-    if (it != m_device_wrappers.end())
+    std::lock_guard guard{ m_device_wrappers_mutex };
+    auto it = m_device_wrappers_map.find(real_device);
+    if (it != m_device_wrappers_map.end())
     {
         it->second->AddRef();
         return it->second;
@@ -378,13 +380,14 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
         m_pDevice->QueryInterface(__uuidof(ID3D12Device8), (void **)&m_pDevice8);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device9), (void **)&m_pDevice9);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device10), (void **)&m_pDevice10);
-    }
 
-    {
-        // TODO: mutex
-        m_device_wrappers[m_pDevice] = this;
+        m_pDevice->AddRef();
+
+        m_device_wrappers_map[m_pDevice] = this;
     }
 }
+
+WrappedID3D12Device::~WrappedID3D12Device() = default;
 
 ULONG STDMETHODCALLTYPE WrappedID3D12Device::AddRef()
 {
@@ -404,7 +407,6 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::QueryInterface(REFIID riid, void 
     return m_pDevice->QueryInterface(riid, ppvObject);
 }
 
-// Don't need to wrap any of these functions below
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)
 {
     return m_pDevice->GetPrivateData(guid, pDataSize, pData);
@@ -435,26 +437,20 @@ LUID WrappedID3D12Device::GetAdapterLuid()
     return m_pDevice->GetAdapterLuid();
 }
 
-// Wrap these functions below
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue(const D3D12_COMMAND_QUEUE_DESC *pDesc, const IID &riid, void **ppCommandQueue)
 {
-    if (ppCommandQueue == nullptr)
-    {
-        return m_pDevice->CreateCommandQueue(pDesc, riid, ppCommandQueue);
-    }
+    HRESULT result = m_pDevice->CreateCommandQueue(pDesc, riid, ppCommandQueue);
 
-    if (riid != __uuidof(ID3D12CommandQueue))
+    if (SUCCEEDED(result) && (ppCommandQueue != nullptr) && (*ppCommandQueue != nullptr))
     {
-        return E_NOINTERFACE;
-    }
-
-    ID3D12CommandQueue *real_queue = nullptr;
-    HRESULT result = m_pDevice->CreateCommandQueue(pDesc, riid, (void **)&real_queue);
-
-    if (SUCCEEDED(result))
-    {
-        WrappedD3D12CommandQueue *wrapped_command_queue = new WrappedD3D12CommandQueue(real_queue, this);
-        *ppCommandQueue = (ID3D12CommandQueue *)wrapped_command_queue;
+        std::cout << "Call CreateCommandQueue\n";
+        std::cout << "Real command queue pointer: " << *ppCommandQueue << '\n';
+        if (riid == __uuidof(ID3D12CommandQueue))
+        {
+            auto *real_queue = reinterpret_cast<ID3D12CommandQueue *>(*ppCommandQueue);
+            auto *wrapped_command_queue = new WrappedD3D12CommandQueue(real_queue, this);
+            *ppCommandQueue = wrapped_command_queue;
+        }
     }
 
     return result;
@@ -480,96 +476,21 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
                                         	                ID3D12CommandAllocator *pCommandAllocator, ID3D12PipelineState *pInitialState, 
                                                             const IID &riid, void **ppCommandList)
 {
-    if (ppCommandList == nullptr)
-    {
-        return m_pDevice->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, nullptr);
-    }
+    HRESULT result = m_pDevice->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, ppCommandList);
 
-    if (riid != __uuidof(ID3D12GraphicsCommandList) && riid != __uuidof(ID3D12CommandList) &&
-        riid != __uuidof(ID3D12GraphicsCommandList1) && riid != __uuidof(ID3D12GraphicsCommandList2) &&
-        riid != __uuidof(ID3D12GraphicsCommandList3) && riid != __uuidof(ID3D12GraphicsCommandList4) &&
-        riid != __uuidof(ID3D12GraphicsCommandList5) && riid != __uuidof(ID3D12GraphicsCommandList6) &&
-        riid != __uuidof(ID3D12GraphicsCommandList7))
+    if (SUCCEEDED(result) && ppCommandList != nullptr && (*ppCommandList != nullptr))
     {
-        return E_NOINTERFACE;
-    }
-    
-    void *real_ptr = nullptr;
-    ID3D12GraphicsCommandList *real_command_list = nullptr;
-    HRESULT result = m_pDevice->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, &real_ptr);
-
-    if(riid == __uuidof(ID3D12CommandList))
-    {
-        real_command_list = (ID3D12GraphicsCommandList *)(ID3D12CommandList *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList))
-    {
-        real_command_list = (ID3D12GraphicsCommandList *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList1))
-    {
-        real_command_list = (ID3D12GraphicsCommandList1 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList2))
-    {
-        real_command_list = (ID3D12GraphicsCommandList2 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList3))
-    {
-        real_command_list = (ID3D12GraphicsCommandList3 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList4))
-    {
-        real_command_list = (ID3D12GraphicsCommandList4 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList5))
-    {
-        real_command_list = (ID3D12GraphicsCommandList5 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList6))
-    {
-        real_command_list = (ID3D12GraphicsCommandList6 *)real_ptr;
-    }
-    else if(riid == __uuidof(ID3D12GraphicsCommandList7))
-    {
-        real_command_list = (ID3D12GraphicsCommandList7 *)real_ptr;
-    }
-
-    if (SUCCEEDED(result))
-    {
-        WrappedID3D12GraphicsCommandList *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this);
-
-        if(riid == __uuidof(ID3D12GraphicsCommandList))
+        std::cout << "Call CreateCommandList\n";
+        std::cout << "Real command list pointer: " << *ppCommandList << '\n';
+        if (riid == __uuidof(ID3D12GraphicsCommandList) && riid == __uuidof(ID3D12CommandList) &&
+            riid == __uuidof(ID3D12GraphicsCommandList1) && riid == __uuidof(ID3D12GraphicsCommandList2) &&
+            riid == __uuidof(ID3D12GraphicsCommandList3) && riid == __uuidof(ID3D12GraphicsCommandList4) &&
+            riid == __uuidof(ID3D12GraphicsCommandList5) && riid == __uuidof(ID3D12GraphicsCommandList6) &&
+            riid == __uuidof(ID3D12GraphicsCommandList7))
         {
-            *ppCommandList = (ID3D12GraphicsCommandList *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList1))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList1 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList2))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList2 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList3))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList3 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList4))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList4 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList5))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList5 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList6))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList6 *)wrapped_command_list;
-        }
-        else if(riid == __uuidof(ID3D12GraphicsCommandList7))
-        {
-            *ppCommandList = (ID3D12GraphicsCommandList7 *)wrapped_command_list;
+            auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
+            auto *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this);
+            *ppCommandList = wrapped_command_list;
         }
     }
 
@@ -676,7 +597,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource(const D3D
                                                         const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                         const IID &riidResource, void **ppvResource)
 {
-    auto result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
+    HRESULT result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                             pOptimizedClearValue, riidResource, ppvResource);
     return result;
 }

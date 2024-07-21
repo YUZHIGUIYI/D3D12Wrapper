@@ -24,7 +24,7 @@ public:
                                                 UINT State) final;
 };
 
-class WrappedD3D12CommandQueue final : public ID3D12CommandQueue
+class WrappedD3D12CommandQueue : public ID3D12CommandQueue
 {
 private:
     ID3D12CommandQueue *m_pQueue = nullptr;
@@ -65,11 +65,11 @@ public:
                                             D3D12_TILE_MAPPING_FLAGS Flags) final;
 
     void STDMETHODCALLTYPE CopyTileMappings(ID3D12Resource *pDstResource,
-                                          const D3D12_TILED_RESOURCE_COORDINATE *
-                                          pDstRegionStartCoordinate, ID3D12Resource *pSrcResource,
-                                          const D3D12_TILED_RESOURCE_COORDINATE *pSrcRegionStartCoordinate,
-                                          const D3D12_TILE_REGION_SIZE *pRegionSize,
-                                          D3D12_TILE_MAPPING_FLAGS Flags) final;
+                                            const D3D12_TILED_RESOURCE_COORDINATE *
+                                            pDstRegionStartCoordinate, ID3D12Resource *pSrcResource,
+                                            const D3D12_TILED_RESOURCE_COORDINATE *pSrcRegionStartCoordinate,
+                                            const D3D12_TILE_REGION_SIZE *pRegionSize,
+                                            D3D12_TILE_MAPPING_FLAGS Flags) final;
 
     void STDMETHODCALLTYPE ExecuteCommandLists(UINT NumCommandLists,
                                     ID3D12CommandList *const *ppCommandLists) final;

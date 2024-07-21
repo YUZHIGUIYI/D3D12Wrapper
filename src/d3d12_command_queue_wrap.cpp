@@ -3,7 +3,8 @@
 WrappedD3D12CommandQueue::WrappedD3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device)
 : m_pQueue(real_command_queue), m_wrapped_device(wrapped_device)
 {
-    // TODO: add ref
+    // TODO: add reference
+    m_pQueue->AddRef();
 }
 
 ULONG STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::AddRef()
@@ -64,7 +65,48 @@ HRESULT STDMETHODCALLTYPE WrappedD3D12CommandQueue::SetName(LPCWSTR Name)
 
 HRESULT STDMETHODCALLTYPE WrappedD3D12CommandQueue::GetDevice(REFIID riid, _COM_Outptr_opt_ void **ppvDevice)
 {
-    return m_pQueue->GetDevice(riid, ppvDevice);
+    HRESULT result = m_pQueue->GetDevice(riid, ppvDevice);
+    if(riid == __uuidof(ID3D12Device1))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device2))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device3))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device4))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device5))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device6))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device7))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device8))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device9))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    else if(riid == __uuidof(ID3D12Device10))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+    return result;
 }
 
 void STDMETHODCALLTYPE WrappedD3D12CommandQueue::UpdateTileMappings(ID3D12Resource *pResource, UINT NumResourceRegions,

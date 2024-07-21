@@ -1,5 +1,7 @@
 LIBRARY d3d12.dll
 
+HEAPSIZE 4096
+
 EXPORTS
     D3D12CreateDevice @101
 

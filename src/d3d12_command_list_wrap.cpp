@@ -451,6 +451,8 @@ WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12Graphic
         m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList5), (void **)&m_pList5);
         m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList6), (void **)&m_pList6);
         m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList7), (void **)&m_pList7);
+
+        m_pList->AddRef();
     }
 }
 
@@ -491,7 +493,15 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetName(LPCWSTR Name
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetDevice(REFIID riid, _COM_Outptr_opt_ void **ppvDevice)
 {
-    return m_pList->GetDevice(riid, ppvDevice);
+    HRESULT result = m_pList->GetDevice(riid, ppvDevice);
+    if(riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
+        riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
+        riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
+    {
+        *ppvDevice = m_wrapped_device;
+    }
+
+    return result;
 }
 
 D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetType()
@@ -504,8 +514,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Close()
     return m_pList->Close();
 }
 
-HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Reset(ID3D12CommandAllocator *pAllocator,
-                                  ID3D12PipelineState *pInitialState)
+HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Reset(ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState)
 {
     return m_pList->Reset(pAllocator, pInitialState);
 }
