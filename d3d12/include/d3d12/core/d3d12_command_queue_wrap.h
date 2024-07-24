@@ -4,7 +4,7 @@
 
 class WrappedID3D12Device;
 
-class WrappedID3D12DebugCommandQueue final : public ID3D12DebugCommandQueue
+class WrappedID3D12DebugCommandQueue : public ID3D12DebugCommandQueue
 {
 private:
     ID3D12DebugCommandQueue *m_pQueue = nullptr;
@@ -20,8 +20,7 @@ public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) final;
 
     // Implement ID3D12DebugCommandQueue
-    BOOL STDMETHODCALLTYPE AssertResourceState(ID3D12Resource *pResource, UINT Subresource,
-                                                UINT State) final;
+    BOOL STDMETHODCALLTYPE AssertResourceState(ID3D12Resource *pResource, UINT Subresource, UINT State) final;
 };
 
 class WrappedD3D12CommandQueue : public ID3D12CommandQueue

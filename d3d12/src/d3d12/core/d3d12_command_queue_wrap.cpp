@@ -1,4 +1,6 @@
 #include <d3d12/core/d3d12_command_queue_wrap.h>
+#include <d3d12/core/d3d12_command_list_wrap.h>
+#include <d3d12/core/d3d12_device_wrap.h>
 
 WrappedD3D12CommandQueue::WrappedD3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device)
 : m_pQueue(real_command_queue), m_wrapped_device(wrapped_device)
@@ -67,13 +69,7 @@ HRESULT STDMETHODCALLTYPE WrappedD3D12CommandQueue::SetName(LPCWSTR Name)
 HRESULT STDMETHODCALLTYPE WrappedD3D12CommandQueue::GetDevice(REFIID riid, _COM_Outptr_opt_ void **ppvDevice)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    HRESULT result = m_pQueue->GetDevice(riid, ppvDevice);
-    if(riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
-        riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
-        riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
-    {
-        *ppvDevice = m_wrapped_device;
-    }
+    HRESULT result = m_wrapped_device->GetDevice(riid, ppvDevice);
     return result;
 }
 
@@ -92,20 +88,32 @@ void STDMETHODCALLTYPE WrappedD3D12CommandQueue::UpdateTileMappings(ID3D12Resour
 }
 
 void STDMETHODCALLTYPE WrappedD3D12CommandQueue::CopyTileMappings(ID3D12Resource *pDstResource,
-                                          const D3D12_TILED_RESOURCE_COORDINATE *
-                                          pDstRegionStartCoordinate, ID3D12Resource *pSrcResource,
-                                          const D3D12_TILED_RESOURCE_COORDINATE *pSrcRegionStartCoordinate,
-                                          const D3D12_TILE_REGION_SIZE *pRegionSize,
-                                          D3D12_TILE_MAPPING_FLAGS Flags)
+                                            const D3D12_TILED_RESOURCE_COORDINATE *pDstRegionStartCoordinate,
+                                            ID3D12Resource *pSrcResource,
+                                            const D3D12_TILED_RESOURCE_COORDINATE *pSrcRegionStartCoordinate,
+                                            const D3D12_TILE_REGION_SIZE *pRegionSize,
+                                            D3D12_TILE_MAPPING_FLAGS Flags)
 {
     m_pQueue->CopyTileMappings(pDstResource, pDstRegionStartCoordinate, pSrcResource, 
                         pSrcRegionStartCoordinate, pRegionSize, Flags);
 }
 
-void STDMETHODCALLTYPE WrappedD3D12CommandQueue::ExecuteCommandLists(UINT NumCommandLists,
-                                    ID3D12CommandList *const *ppCommandLists)
+void STDMETHODCALLTYPE WrappedD3D12CommandQueue::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList *const *ppCommandLists)
 {
-    m_pQueue->ExecuteCommandLists(NumCommandLists, ppCommandLists);
+    // TODO: check
+    D3D12_WRAPPER_ASSERT(NumCommandLists > 0, "The number of command lists should be greater than 0");
+    std::vector<ID3D12CommandList *> real_command_lists;
+    for (uint32_t i = 0; i < NumCommandLists; ++i)
+    {
+        if (auto *wrapped_command_list = dynamic_cast<WrappedID3D12GraphicsCommandList *>(ppCommandLists[i]))
+        {
+            real_command_lists.push_back(wrapped_command_list->GetReal());
+        } else
+        {
+            real_command_lists.push_back(ppCommandLists[i]);
+        }
+    }
+    m_pQueue->ExecuteCommandLists(NumCommandLists, real_command_lists.data());
 }
 
 void STDMETHODCALLTYPE WrappedD3D12CommandQueue::SetMarker(UINT Metadata, const void *pData, UINT Size)

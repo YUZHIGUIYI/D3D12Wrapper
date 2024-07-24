@@ -19,6 +19,8 @@ public:
 
     ~WrappedID3D12CommandAllocator();
 
+    ID3D12CommandAllocator *GetReal();
+
     // Implement IUnknown
     ULONG STDMETHODCALLTYPE AddRef() final;
 

@@ -102,10 +102,10 @@ HRESULT WINAPI D3D12CreateDevice(
     if (s_d3d12_hook->pfn_create_device)
     {
         result = s_d3d12_hook->pfn_create_device(pAdapter, MinimumFeatureLevel, riid, ppDevice);
-        D3D12_WRAPPER_DEBUG("Call D3DCreateDevice.");
+        D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
         if (ppDevice != nullptr && (*ppDevice != nullptr))
         {
-            D3D12_WRAPPER_DEBUG("Real device pointer: {}.", *ppDevice);
+            D3D12_WRAPPER_DEBUG("Real device pointer: {}", *ppDevice);
         }
     }
 
@@ -120,7 +120,7 @@ HRESULT WINAPI D3D12CreateDevice(
             real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
             WrappedID3D12Device *wrapped_device = WrappedID3D12Device::create(real_device);
             *ppDevice = wrapped_device;
-            D3D12_WRAPPER_DEBUG("Fake device pointer: {}.", reinterpret_cast<void *>(wrapped_device));
+            D3D12_WRAPPER_DEBUG("Wrapped device pointer: {}", reinterpret_cast<void *>(wrapped_device));
         }
     }
 

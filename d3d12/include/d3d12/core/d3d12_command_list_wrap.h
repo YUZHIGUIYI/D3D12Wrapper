@@ -281,6 +281,8 @@ class WrappedID3D12Device;
 
 class WrappedID3D12GraphicsCommandList;
 
+class WrappedID3D12CommandAllocator;
+
 struct WrappedID3D12DebugCommandList : public ID3D12DebugCommandList2
 {
     ID3D12DebugCommandList *m_pDebugList   = nullptr;
@@ -322,10 +324,15 @@ private:
     ID3D12GraphicsCommandList6 *m_pList6 = nullptr;
     ID3D12GraphicsCommandList7 *m_pList7 = nullptr;
 
+    WrappedID3D12CommandAllocator *m_wrapped_command_allocator = nullptr;
     WrappedID3D12Device *m_wrapped_device = nullptr;
 
 public:
-    WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device);
+    WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device, WrappedID3D12CommandAllocator *wrapped_command_allocator);
+
+    ~WrappedID3D12GraphicsCommandList();
+
+    ID3D12GraphicsCommandList *GetReal();
 
 public:
     // Implement IUnknown

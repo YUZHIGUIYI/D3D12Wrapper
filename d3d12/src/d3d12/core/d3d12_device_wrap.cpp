@@ -387,6 +387,23 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
 
 WrappedID3D12Device::~WrappedID3D12Device() = default;
 
+HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
+{
+    if (ppvDevice == nullptr)
+    {
+        return E_INVALIDARG;
+    }
+
+    if(riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
+       riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
+       riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
+    {
+        *ppvDevice = this;
+        this->AddRef();
+    }
+    return S_OK;
+}
+
 ULONG STDMETHODCALLTYPE WrappedID3D12Device::AddRef()
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
@@ -466,18 +483,22 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandAllocator(D3D12_COMM
 {
     // TODO: wrap command allocator
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    assert(ppCommandAllocator != nullptr && (*ppCommandAllocator == nullptr));
 
     HRESULT result =  m_pDevice->CreateCommandAllocator(type, riid, ppCommandAllocator);
-    if (SUCCEEDED(result) && ppCommandAllocator && (*ppCommandAllocator))
+    if (SUCCEEDED(result) && ppCommandAllocator != nullptr && (*ppCommandAllocator != nullptr))
     {
         D3D12_WRAPPER_DEBUG("Real command allocator pointer: {}", *ppCommandAllocator);
         if (riid == __uuidof(ID3D12CommandAllocator))
         {
-//            auto *real_command_allocator = reinterpret_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
-//            auto *wrapped_command_allocator = new WrappedID3D12CommandAllocator(real_command_allocator, this);
-//            *ppCommandAllocator = wrapped_command_allocator;
-//            D3D12_WRAPPER_DEBUG("Wrapped command allocator pointer: {}", reinterpret_cast<void *>(wrapped_command_allocator));
+            auto *real_command_allocator = reinterpret_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
+            auto *wrapped_command_allocator = new WrappedID3D12CommandAllocator(real_command_allocator, this);
+            *ppCommandAllocator = reinterpret_cast<ID3D12CommandAllocator *>(wrapped_command_allocator);
+            D3D12_WRAPPER_DEBUG("Wrapped command allocator pointer: {}", reinterpret_cast<void *>(wrapped_command_allocator));
         }
+    } else
+    {
+        D3D12_WRAPPER_WARN("Failed to create command allocator");
     }
     return result;
 }
@@ -500,7 +521,16 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
 
-    HRESULT result = m_pDevice->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, ppCommandList);
+    ID3D12CommandAllocator *real_command_allocator = pCommandAllocator;
+    if (pCommandAllocator)
+    {
+        if (auto *wrapped_command_allocator = dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator))
+        {
+            real_command_allocator = wrapped_command_allocator->GetReal();
+        }
+    }
+
+    HRESULT result = m_pDevice->CreateCommandList(nodeMask, type, real_command_allocator, pInitialState, riid, ppCommandList);
     if (SUCCEEDED(result) && ppCommandList != nullptr && (*ppCommandList != nullptr))
     {
         D3D12_WRAPPER_DEBUG("Real command list pointer: {}", *ppCommandList);
@@ -510,14 +540,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
             riid == __uuidof(ID3D12GraphicsCommandList5) || riid == __uuidof(ID3D12GraphicsCommandList6) ||
             riid == __uuidof(ID3D12GraphicsCommandList7))
         {
-//            auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
-//            auto *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this);
-//            *ppCommandList = wrapped_command_list;
-//            D3D12_WRAPPER_DEBUG("Wrapped command list pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
+            auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
+            auto *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this, dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator));
+            *ppCommandList = reinterpret_cast<ID3D12GraphicsCommandList *>(wrapped_command_list);
+            D3D12_WRAPPER_DEBUG("Wrapped command list pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
         }
     } else
     {
-        D3D12_WRAPPER_ERROR("Failed to create command list");
+        D3D12_WRAPPER_WARN("Failed to create command list");
     }
 
     return result;
@@ -626,9 +656,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource(const D3D
                                                         const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                         const IID &riidResource, void **ppvResource)
 {
+    static uint32_t s_resource_number = 0;
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    D3D12_WRAPPER_DEBUG("Resource number: {}; heap flag: {}; heap type: {}; CPUPageProperty: {}; MemoryPoolPreference: {}",
+                        s_resource_number, static_cast<int>(HeapFlags), static_cast<int>(pHeapProperties->Type), static_cast<int>(pHeapProperties->CPUPageProperty),
+                        static_cast<int>(pHeapProperties->MemoryPoolPreference));
     HRESULT result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                             pOptimizedClearValue, riidResource, ppvResource);
+    ++s_resource_number;
     return result;
 }
 

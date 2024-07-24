@@ -1,5 +1,6 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
+#include <d3d12/core/d3d12_command_allocator_wrap.h>
 
 namespace gfxshim
 {
@@ -136,8 +137,7 @@ namespace gfxshim
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::RSSetScissorRects(
-            UINT NumRects,
-            const D3D12_RECT* pRects)
+            UINT NumRects, const D3D12_RECT* pRects)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->RSSetScissorRects(NumRects, pRects);
     }
@@ -435,8 +435,9 @@ namespace gfxshim
     }
 }
 
-WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device)
-: m_pList(real_command_list), m_wrapped_device(wrapped_device)
+WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device,
+                                                                    WrappedID3D12CommandAllocator *wrapped_command_allocator)
+: m_pList(real_command_list), m_wrapped_device(wrapped_device), m_wrapped_command_allocator(wrapped_command_allocator)
 {
     if (m_pList)
     {
@@ -452,6 +453,13 @@ WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12Graphic
     }
 }
 
+WrappedID3D12GraphicsCommandList::~WrappedID3D12GraphicsCommandList() = default;
+
+ID3D12GraphicsCommandList *WrappedID3D12GraphicsCommandList::GetReal()
+{
+    return m_pList;
+}
+
 ULONG STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::AddRef()
 {
     return m_pList->AddRef();
@@ -464,45 +472,46 @@ ULONG STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Release()
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::QueryInterface(REFIID riid, void **ppvObject)
 {
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->QueryInterface(riid, ppvObject);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)
 {
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->GetPrivateData(guid, pDataSize, pData);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetPrivateData(REFGUID guid, UINT DataSize, const void *pData)
 {
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->SetPrivateData(guid, DataSize, pData);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetPrivateDataInterface(REFGUID guid, const IUnknown *pData)
 {
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->SetPrivateDataInterface(guid, pData);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetName(LPCWSTR Name)
 {
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->SetName(Name);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetDevice(REFIID riid, _COM_Outptr_opt_ void **ppvDevice)
 {
-    HRESULT result = m_pList->GetDevice(riid, ppvDevice);
-    if(riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
-        riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
-        riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
-    {
-        *ppvDevice = m_wrapped_device;
-    }
-
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    HRESULT result = m_wrapped_device->GetDevice(riid, ppvDevice);
     return result;
 }
 
 D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetType()
 {
-    return m_pList->GetType();
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    auto command_list_type =  m_pList->GetType();
+    return command_list_type;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Close()
@@ -514,7 +523,13 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Close()
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Reset(ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pList->Reset(pAllocator, pInitialState);
+    D3D12_WRAPPER_ASSERT(pAllocator != nullptr, "ID3D12CommandAllocator can not be nullptr");
+    ID3D12CommandAllocator *real_command_allocator = pAllocator;
+    if (auto *wrapped_command_allocator = dynamic_cast<WrappedID3D12CommandAllocator *>(pAllocator))
+    {
+        real_command_allocator = wrapped_command_allocator->GetReal();
+    }
+    return m_pList->Reset(real_command_allocator, pInitialState);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ClearState(ID3D12PipelineState *pPipelineState)
@@ -529,21 +544,18 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawInstanced(UINT Vert
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount,
-                                        UINT StartIndexLocation, INT BaseVertexLocation,
-                                        UINT StartInstanceLocation)
+                                        UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
 {
     m_pList->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
 }
 
-void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Dispatch(UINT ThreadGroupCountX, UINT ThreadGroupCountY,
-                            UINT ThreadGroupCountZ)
+void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Dispatch(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ)
 {
     m_pList->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::CopyBufferRegion(ID3D12Resource *pDstBuffer, UINT64 DstOffset,
-                                    ID3D12Resource *pSrcBuffer, UINT64 SrcOffset,
-                                    UINT64 NumBytes)
+                                    ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes)
 {
     m_pList->CopyBufferRegion(pDstBuffer, DstOffset, pSrcBuffer, SrcOffset, NumBytes);
 }
@@ -614,7 +626,17 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ResourceBarrier(UINT Nu
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ExecuteBundle(ID3D12GraphicsCommandList *pCommandList)
 {
-    m_pList->ExecuteBundle(pCommandList);
+    // TODO: check
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    ID3D12GraphicsCommandList *real_command_list = pCommandList;
+    if (pCommandList)
+    {
+        if (auto *wrapped_command_list = dynamic_cast<WrappedID3D12GraphicsCommandList *>(pCommandList))
+        {
+            real_command_list = wrapped_command_list->GetReal();
+        }
+    }
+    m_pList->ExecuteBundle(real_command_list);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetDescriptorHeaps(UINT NumDescriptorHeaps,
@@ -739,8 +761,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ClearDepthStencilView(D
                                         UINT8 Stencil, UINT NumRects,
                                         const D3D12_RECT *pRects)
 {
-    m_pList->ClearDepthStencilView(DepthStencilView, ClearFlags, Depth, 
-                            Stencil, NumRects, pRects);
+    m_pList->ClearDepthStencilView(DepthStencilView, ClearFlags, Depth, Stencil, NumRects, pRects);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ClearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView,

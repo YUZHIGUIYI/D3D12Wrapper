@@ -248,6 +248,9 @@ public:
     static WrappedID3D12Device *create(ID3D12Device *real_device);
 
 public:
+    // Helper for ID3D12DeviceChild implementation to use
+    HRESULT GetDevice(REFIID riid, void **ppvDevice);
+
     // Implement IUnknown
     ULONG STDMETHODCALLTYPE AddRef() override;
 
