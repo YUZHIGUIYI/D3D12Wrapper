@@ -509,20 +509,17 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetDevice(REFIID rii
 
 D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetType()
 {
-    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     auto command_list_type =  m_pList->GetType();
     return command_list_type;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Close()
 {
-    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pList->Close();
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Reset(ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState)
 {
-    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     D3D12_WRAPPER_ASSERT(pAllocator != nullptr, "ID3D12CommandAllocator can not be nullptr");
     ID3D12CommandAllocator *real_command_allocator = pAllocator;
     if (auto *wrapped_command_allocator = dynamic_cast<WrappedID3D12CommandAllocator *>(pAllocator))

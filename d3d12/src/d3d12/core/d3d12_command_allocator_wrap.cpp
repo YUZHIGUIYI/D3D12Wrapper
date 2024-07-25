@@ -76,6 +76,5 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::GetDevice(REFIID riid, 
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::Reset()
 {
-    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_command_allocator->Reset();
 }
