@@ -23,16 +23,16 @@ public:
     BOOL STDMETHODCALLTYPE AssertResourceState(ID3D12Resource *pResource, UINT Subresource, UINT State) final;
 };
 
-class WrappedD3D12CommandQueue : public ID3D12CommandQueue
+class WrappedID3D12CommandQueue : public ID3D12CommandQueue
 {
 private:
     ID3D12CommandQueue *m_pQueue = nullptr;
     WrappedID3D12Device *m_wrapped_device = nullptr;
 
 public:
-    WrappedD3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device);
+    WrappedID3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device);
 
-    ~WrappedD3D12CommandQueue();
+    ~WrappedID3D12CommandQueue();
 
 public:
     // Implement IUnknown

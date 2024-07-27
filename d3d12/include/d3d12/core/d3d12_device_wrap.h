@@ -237,15 +237,10 @@ private:
     ID3D12Device9  *m_pDevice9  = nullptr;
     ID3D12Device10 *m_pDevice10 = nullptr;
 
-    static std::unordered_map<ID3D12Device *, WrappedID3D12Device *> m_device_wrappers_map;
-    static std::mutex m_device_wrappers_mutex;
-
 public:
     explicit WrappedID3D12Device(ID3D12Device *real_device);
 
-    virtual ~WrappedID3D12Device();
-
-    static WrappedID3D12Device *create(ID3D12Device *real_device);
+    ~WrappedID3D12Device();
 
 public:
     // Helper for ID3D12DeviceChild implementation to use

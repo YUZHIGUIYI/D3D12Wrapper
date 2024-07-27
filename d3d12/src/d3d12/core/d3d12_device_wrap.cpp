@@ -2,6 +2,7 @@
 #include <d3d12/core/d3d12_command_queue_wrap.h>
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
+#include <d3d12/core/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
@@ -347,22 +348,6 @@ namespace gfxshim
     }
 }
 
-std::unordered_map<ID3D12Device *, WrappedID3D12Device *> WrappedID3D12Device::m_device_wrappers_map;
-std::mutex WrappedID3D12Device::m_device_wrappers_mutex;
-
-WrappedID3D12Device *WrappedID3D12Device::create(ID3D12Device *real_device)
-{
-    std::lock_guard guard{ m_device_wrappers_mutex };
-    auto it = m_device_wrappers_map.find(real_device);
-    if (it != m_device_wrappers_map.end())
-    {
-        it->second->AddRef();
-        return it->second;
-    }
-
-    return new WrappedID3D12Device(real_device);
-}
-
 WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
 : m_pDevice(real_device)
 {
@@ -380,8 +365,6 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
         m_pDevice->QueryInterface(__uuidof(ID3D12Device10), (void **)&m_pDevice10);
 
         m_pDevice->AddRef();
-
-        m_device_wrappers_map[m_pDevice] = this;
     }
 }
 
@@ -407,18 +390,20 @@ HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
 ULONG STDMETHODCALLTYPE WrappedID3D12Device::AddRef()
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice->AddRef();
+    auto reference_count = m_pDevice->AddRef();
+    return reference_count;
 }
 
 ULONG STDMETHODCALLTYPE WrappedID3D12Device::Release()
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice->Release();
+    auto reference_count = m_pDevice->Release();
+    return reference_count;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::QueryInterface(REFIID riid, void **ppvObject)
 {
-    // TODO: fix
+    // TODO: check
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pDevice->QueryInterface(riid, ppvObject);
 }
@@ -470,7 +455,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue(const D3D12_CO
         if (riid == __uuidof(ID3D12CommandQueue))
         {
             auto *real_queue = reinterpret_cast<ID3D12CommandQueue *>(*ppCommandQueue);
-            auto *wrapped_command_queue = new WrappedD3D12CommandQueue(real_queue, this);
+            auto *wrapped_command_queue = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandQueue>(real_queue, this);
             *ppCommandQueue = wrapped_command_queue;
             D3D12_WRAPPER_DEBUG("Wrapped command queue pointer: {}", reinterpret_cast<void *>(wrapped_command_queue));
         }
@@ -481,7 +466,6 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue(const D3D12_CO
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE type, const IID &riid, void **ppCommandAllocator)
 {
-    // TODO: wrap command allocator
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     assert(ppCommandAllocator != nullptr && (*ppCommandAllocator == nullptr));
 
@@ -492,7 +476,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandAllocator(D3D12_COMM
         if (riid == __uuidof(ID3D12CommandAllocator))
         {
             auto *real_command_allocator = reinterpret_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
-            auto *wrapped_command_allocator = new WrappedID3D12CommandAllocator(real_command_allocator, this);
+            auto *wrapped_command_allocator = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandAllocator>(real_command_allocator, this);
             *ppCommandAllocator = reinterpret_cast<ID3D12CommandAllocator *>(wrapped_command_allocator);
             D3D12_WRAPPER_DEBUG("Wrapped command allocator pointer: {}", reinterpret_cast<void *>(wrapped_command_allocator));
         }
@@ -541,7 +525,8 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
             riid == __uuidof(ID3D12GraphicsCommandList7))
         {
             auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
-            auto *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this, dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator));
+            auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().
+                                    ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator));
             *ppCommandList = reinterpret_cast<ID3D12GraphicsCommandList *>(wrapped_command_list);
             D3D12_WRAPPER_DEBUG("Wrapped command list pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
         }
@@ -656,14 +641,9 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource(const D3D
                                                         const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                         const IID &riidResource, void **ppvResource)
 {
-    static uint32_t s_resource_number = 0;
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    D3D12_WRAPPER_DEBUG("Resource number: {}; heap flag: {}; heap type: {}; CPUPageProperty: {}; MemoryPoolPreference: {}",
-                        s_resource_number, static_cast<int>(HeapFlags), static_cast<int>(pHeapProperties->Type), static_cast<int>(pHeapProperties->CPUPageProperty),
-                        static_cast<int>(pHeapProperties->MemoryPoolPreference));
     HRESULT result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
-                                            pOptimizedClearValue, riidResource, ppvResource);
-    ++s_resource_number;
+                                                pOptimizedClearValue, riidResource, ppvResource);
     return result;
 }
 
@@ -778,7 +758,7 @@ void STDMETHODCALLTYPE WrappedID3D12Device::GetResourceTiling(ID3D12Resource *pT
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     m_pDevice->GetResourceTiling(pTiledResource, pNumTilesForEntireResource, pPackedMipDesc, 
-                    pStandardTileShapeForNonPackedMips, pNumSubresourceTilings, FirstSubresourceTilingToGet, pSubresourceTilingsForNonPackedMips);
+                                pStandardTileShapeForNonPackedMips, pNumSubresourceTilings, FirstSubresourceTilingToGet, pSubresourceTilingsForNonPackedMips);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreatePipelineLibrary(const void *pLibraryBlob, SIZE_T BlobLength,
@@ -842,10 +822,10 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList1(UINT nodeMask,
             riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4) || riid == __uuidof(ID3D12GraphicsCommandList5) ||
             riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7))
         {
-//            auto real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
-//            auto *wrapped_command_list = new WrappedID3D12GraphicsCommandList(real_command_list, this);
-//            *ppCommandList = wrapped_command_list;
-//            D3D12_WRAPPER_DEBUG("Wrapped command list1 pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
+            auto real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
+            auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, nullptr);
+            *ppCommandList = wrapped_command_list;
+            D3D12_WRAPPER_DEBUG("Wrapped command list1 pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
         }
     }
 
@@ -1064,7 +1044,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue1(const D3D12_C
         if(riid == __uuidof(ID3D12CommandQueue))
         {
             auto *real_queue = reinterpret_cast<ID3D12CommandQueue *>(*ppCommandQueue);
-            auto *wrapped_command_queue = new WrappedD3D12CommandQueue(real_queue, this);
+            auto *wrapped_command_queue = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandQueue>(real_queue, this);// new WrappedID3D12CommandQueue(real_queue, this);
             *ppCommandQueue = wrapped_command_queue;
             D3D12_WRAPPER_DEBUG("Wrapped command queue pointer: {}", reinterpret_cast<void *>(wrapped_command_queue));
         }
@@ -1088,7 +1068,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource3(
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pDevice10->CreateCommittedResource3(pHeapProperties, HeapFlags, pDesc, InitialLayout, 
-            pOptimizedClearValue, pProtectedSession, NumCastableFormats, pCastableFormats, riidResource, ppvResource);
+                pOptimizedClearValue, pProtectedSession, NumCastableFormats, pCastableFormats, riidResource, ppvResource);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreatePlacedResource2( 
