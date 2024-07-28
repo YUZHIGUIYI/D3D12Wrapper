@@ -377,9 +377,9 @@ HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
         return E_INVALIDARG;
     }
 
-    if(riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
-       riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
-       riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
+    if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) ||
+        riid == __uuidof(ID3D12Device4) || riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) ||
+        riid == __uuidof(ID3D12Device8) || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10))
     {
         *ppvDevice = this;
         this->AddRef();
@@ -587,6 +587,11 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateRenderTargetView(ID3D12Resourc
                                                 D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
 {
     m_pDevice->CreateRenderTargetView(pResource, pDesc, DestDescriptor);
+    if (pResource != nullptr && pDesc != nullptr)
+    {
+        gfxshim::D3D12Tracer::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource);
+        D3D12_WRAPPER_DEBUG("Create render target view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12Device::CreateDepthStencilView(ID3D12Resource *pResource,

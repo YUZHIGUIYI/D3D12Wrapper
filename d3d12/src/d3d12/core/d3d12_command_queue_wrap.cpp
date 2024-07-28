@@ -1,6 +1,7 @@
 #include <d3d12/core/d3d12_command_queue_wrap.h>
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
+#include <d3d12/core/d3d12_hook_manager.h>
 
 WrappedID3D12CommandQueue::WrappedID3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device)
 : m_pQueue(real_command_queue), m_wrapped_device(wrapped_device)
@@ -115,6 +116,12 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::ExecuteCommandLists(UINT NumCo
         }
     }
     m_pQueue->ExecuteCommandLists(NumCommandLists, real_command_lists.data());
+
+    // Per draw dump
+    gfxshim::D3D12Tracer::GetInstance().PerDrawDump(this);
+
+    // Clear rtv state
+    gfxshim::D3D12Tracer::GetInstance().ClearRTVState();
 }
 
 void STDMETHODCALLTYPE WrappedID3D12CommandQueue::SetMarker(UINT Metadata, const void *pData, UINT Size)

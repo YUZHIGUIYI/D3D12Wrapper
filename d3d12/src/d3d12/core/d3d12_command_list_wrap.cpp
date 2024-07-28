@@ -1,6 +1,7 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
+#include <d3d12/core/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
@@ -619,6 +620,15 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetPipelineState(ID3D12
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ResourceBarrier(UINT NumBarriers, const D3D12_RESOURCE_BARRIER *pBarriers)
 {
     m_pList->ResourceBarrier(NumBarriers, pBarriers);
+//    if (pBarriers != nullptr)
+//    {
+//        auto &&d3d12_tracer = gfxshim::D3D12Tracer::GetInstance();
+//        for (uint32_t i = 0; i< NumBarriers; ++i)
+//        {
+//            if (pBarriers[i].Type != D3D12_RESOURCE_BARRIER_TYPE_TRANSITION) continue;
+//            if (pBarriers[i].Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION && pBarriers[i].Transition.pResource == nullptr) continue;
+//        }
+//    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ExecuteBundle(ID3D12GraphicsCommandList *pCommandList)
@@ -751,6 +761,13 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetRenderTargets(UINT
                                             const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor)
 {
     m_pList->OMSetRenderTargets(NumRenderTargetDescriptors, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
+    if (NumRenderTargetDescriptors > 0)
+    {
+        for (uint32_t i = 0; i < NumRenderTargetDescriptors; ++i)
+        {
+            gfxshim::D3D12Tracer::GetInstance().UpdateRTVState(pRenderTargetDescriptors[i].ptr);
+        }
+    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView,

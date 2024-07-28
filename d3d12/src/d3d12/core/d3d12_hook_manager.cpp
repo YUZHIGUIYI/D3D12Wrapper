@@ -7,9 +7,105 @@
 #include <d3d12/core/d3d12_command_queue_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
 #include <d3d12/core/d3d12_command_list_wrap.h>
+#include <ScreenGrab12.h>
 
 namespace gfxshim
 {
+    D3D12Tracer::DumpDecoration::DumpDecoration(gfxshim::D3D12Tracer &in_tracer, const std::wstring &in_string)
+    : tracer(in_tracer)
+    {
+        auto current_execution_count = in_tracer.CheckExecutionCount();
+        decorated_string = in_string + std::to_wstring(current_execution_count) + L"_";
+    }
+
+    std::wstring &D3D12Tracer::DumpDecoration::operator()()
+    {
+        return decorated_string;
+    }
+
+    D3D12Tracer::D3D12Tracer() = default;
+
+    D3D12Tracer &D3D12Tracer::GetInstance()
+    {
+        static D3D12Tracer d3d12_tracer{};
+        return d3d12_tracer;
+    }
+
+    void D3D12Tracer::StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource)
+    {
+        render_target_resource_storage[rtv_descriptor] = resource;
+    }
+
+    bool D3D12Tracer::CheckRTVResourceStoredStatus(ID3D12Resource *resource)
+    {
+        for (auto &&each_rtv_resource : render_target_resource_storage)
+        {
+            if (resource == each_rtv_resource.second)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void D3D12Tracer::UpdateRTVState(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state)
+    {
+        if (render_target_state_before_execution.contains(rtv_descriptor))
+        {
+            render_target_state_before_execution[rtv_descriptor].resource_state = resource_state;
+        } else
+        {
+            ID3D12Resource *resource = nullptr;
+            if (render_target_resource_storage.contains(rtv_descriptor))
+            {
+                resource = render_target_resource_storage[rtv_descriptor];
+            }
+            render_target_state_before_execution[rtv_descriptor] = { resource, 0, resource_state };
+        }
+    }
+
+    void D3D12Tracer::ClearRTVState()
+    {
+        if (per_draw_dump_ready.load(std::memory_order_seq_cst)) return;
+        render_target_state_before_execution.clear();
+    }
+
+    uint32_t D3D12Tracer::IncreaseExecutionCount()
+    {
+        return execution_count.fetch_add(1, std::memory_order_seq_cst);
+    }
+
+    uint32_t D3D12Tracer::CheckExecutionCount() const
+    {
+        return execution_count.load(std::memory_order_seq_cst);
+    }
+
+    void D3D12Tracer::PerDrawDump(ID3D12CommandQueue *command_queue)
+    {
+        if (per_draw_dump_ready.load(std::memory_order_seq_cst)) return;
+
+        if (CheckExecutionCount() >= 20) return;  // TODO: just for testing per-draw-dump
+
+        D3D12_WRAPPER_DEBUG("Begin to per-draw-dump");
+
+        static uint32_t index = 0;
+        DumpDecoration dump_decoration{ *this, this->per_draw_dump_prefix };
+        per_draw_dump_ready.store(true, std::memory_order_seq_cst);
+        for (auto &&render_target_state : render_target_state_before_execution)
+        {
+            if (render_target_state.second.pResource != nullptr)
+            {
+                std::wstring render_target_file = dump_decoration.decorated_string + std::to_wstring(index) + L".dds";
+                DirectX::SaveDDSTextureToFile(command_queue, render_target_state.second.pResource, render_target_file.c_str());
+                ++index;
+            }
+        }
+        per_draw_dump_ready.store(false, std::memory_order_seq_cst);
+        IncreaseExecutionCount();
+
+        D3D12_WRAPPER_DEBUG("End per-draw-dump");
+    }
+
     D3D12HookManager::D3D12HookManager()
     : resource_manager_impl(std::make_unique<ResourceManagerImpl>())
     {
