@@ -46,55 +46,6 @@ namespace gfxshim
         PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES                 D3D12EnableExperimentalFeatures = nullptr;
     };
 
-    struct RenderTargetViewState
-    {
-        ID3D12Resource *pResource = nullptr;
-        uint32_t Subresource = 0;
-        D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    };
-
-    struct D3D12Tracer
-    {
-    private:
-        std::unordered_map<uint64_t, ID3D12Resource *> render_target_resource_storage;
-        std::unordered_map<uint64_t, RenderTargetViewState> render_target_state_before_execution;
-        std::unordered_map<ID3D12Resource *, uint64_t> resource_to_rtv_map;
-        std::wstring per_draw_dump_prefix = L"ExecuteCM_";
-        std::atomic<uint32_t> execution_count{ 0 };
-        std::atomic<bool> per_draw_dump_ready{ false };
-
-        struct DumpDecoration
-        {
-            DumpDecoration(D3D12Tracer &in_tracer, const std::wstring &in_string);
-            std::wstring &operator()();
-            D3D12Tracer  &tracer;
-            std::wstring decorated_string;
-        };
-
-    public:
-        D3D12Tracer();
-
-        static D3D12Tracer &GetInstance();
-
-        // Store render target view resource during creation
-        void StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource);
-
-        // Check whether rtv resource has been included
-        bool CheckRTVResourceStoredStatus(ID3D12Resource *resource);
-
-        // Store render target view resource during output merger
-        void UpdateRTVState(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-        // Clear render target view state after execution
-        void ClearRTVState();
-
-        uint32_t IncreaseExecutionCount();
-
-        uint32_t CheckExecutionCount() const;
-
-        void PerDrawDump(ID3D12CommandQueue *command_queue);
-    };
-
     struct D3D12HookManager
     {
     private:

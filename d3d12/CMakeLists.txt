@@ -17,7 +17,7 @@ target_sources(
 target_include_directories(d3d12 PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
 target_link_libraries(d3d12 PUBLIC ${LINK_D3D12_OUTPUT})
 target_link_libraries(d3d12 PRIVATE spdlog_header_only)
-target_link_libraries(d3d12 PRIVATE ScreenGrab12)
+target_link_libraries(d3d12 PRIVATE DirectXTex)
 set_target_properties(d3d12 PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON

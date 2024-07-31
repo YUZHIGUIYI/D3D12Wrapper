@@ -3,6 +3,7 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
 #include <d3d12/core/d3d12_hook_manager.h>
+#include <d3d12/core/d3d12_tracer.h>
 
 namespace gfxshim
 {
@@ -589,7 +590,7 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateRenderTargetView(ID3D12Resourc
     m_pDevice->CreateRenderTargetView(pResource, pDesc, DestDescriptor);
     if (pResource != nullptr && pDesc != nullptr)
     {
-        gfxshim::D3D12Tracer::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource);
+        gfxshim::D3D12Tracer::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, pDesc);
         D3D12_WRAPPER_DEBUG("Create render target view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
     }
 }

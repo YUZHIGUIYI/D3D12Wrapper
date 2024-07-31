@@ -13,5 +13,8 @@ add_subdirectory(external/spdlog)
 # Microsoft ScreenGrab
 add_subdirectory(external/ScreenGrab)
 
+# DirectXTex
+add_subdirectory(external/DirectXTex)
+
 # d3d12
 add_subdirectory(d3d12)
