@@ -21,6 +21,7 @@
 #include <atomic>
 #include <cassert>
 #include <d3d12/common/logger.h>
+#include <wrl\client.h>
 
 #if defined(__GNUC__) || defined(__clang__)
 #define SHIM_FUNC_SIGNATURE __PRETTY_FUNCTION__
@@ -30,8 +31,27 @@
 #define SHIM_FUNC_SIGNATURE __func__
 #endif
 
+#if defined(max)
+#undef max
+#endif
+
+#if defined(min)
+#undef min
+#endif
+
+#if defined(near)
+#undef near
+#endif
+
+#if defined(far)
+#undef far
+#endif
+
 namespace gfxshim
 {
+    template <typename T>
+    using ComPtr = Microsoft::WRL::ComPtr<T>;
+
     const IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
 
     MIDL_INTERFACE("E00BB2CC-162E-4AAD-9769-EDE6915395F6")

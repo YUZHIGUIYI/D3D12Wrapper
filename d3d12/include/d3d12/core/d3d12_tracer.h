@@ -48,13 +48,14 @@ namespace gfxshim
         // Store render target view resource during output merger
         void UpdateRTVState(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-        // Clear render target view state after execution
+        // Clear render target view state after execution, thread-safely
         void ClearRTVInfo();
 
         uint32_t IncreaseExecutionCount();
 
         uint32_t CheckExecutionCount() const;
 
+        // Thread-safe per draw dump
         void PerDrawDump(ID3D12CommandQueue *command_queue);
     };
 }
