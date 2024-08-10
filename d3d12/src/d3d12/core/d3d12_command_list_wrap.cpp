@@ -539,12 +539,14 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawInstanced(UINT Vert
                                 UINT StartVertexLocation, UINT StartInstanceLocation)
 {
     m_pList->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
+    gfxshim::D3D12Tracer::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, this);  // TODO: test deferred per-draw-dump
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount,
                                         UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
 {
     m_pList->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+    gfxshim::D3D12Tracer::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, this);  // TODO: test deferred per-draw-dump
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Dispatch(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ)
@@ -620,20 +622,11 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetPipelineState(ID3D12
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ResourceBarrier(UINT NumBarriers, const D3D12_RESOURCE_BARRIER *pBarriers)
 {
     m_pList->ResourceBarrier(NumBarriers, pBarriers);
-//    if (pBarriers != nullptr)
-//    {
-//        auto &&d3d12_tracer = gfxshim::D3D12Tracer::GetInstance();
-//        for (uint32_t i = 0; i< NumBarriers; ++i)
-//        {
-//            if (pBarriers[i].Type != D3D12_RESOURCE_BARRIER_TYPE_TRANSITION) continue;
-//            if (pBarriers[i].Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION && pBarriers[i].Transition.pResource == nullptr) continue;
-//        }
-//    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ExecuteBundle(ID3D12GraphicsCommandList *pCommandList)
 {
-    // TODO: check
+    // TODO: Verify robustness
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     ID3D12GraphicsCommandList *real_command_list = pCommandList;
     if (pCommandList)
@@ -765,7 +758,8 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetRenderTargets(UINT
     {
         for (uint32_t i = 0; i < NumRenderTargetDescriptors; ++i)
         {
-            gfxshim::D3D12Tracer::GetInstance().UpdateRTVState(pRenderTargetDescriptors[i].ptr);
+            // gfxshim::D3D12Tracer::GetInstance().UpdateRTVStatePerExecution(pRenderTargetDescriptors[i].ptr);  // TODO: test per-execution-dump
+            gfxshim::D3D12Tracer::GetInstance().UpdateRTVStatePerDraw(pRenderTargetDescriptors[i].ptr);  // TODO: test deferred per-draw-dump
         }
     }
 }

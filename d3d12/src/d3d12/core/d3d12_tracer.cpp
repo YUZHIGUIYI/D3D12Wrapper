@@ -3,13 +3,14 @@
 //
 
 #include <d3d12/core/d3d12_tracer.h>
-#include <DirectXTex.h>
 #include <numeric>
+#include <DirectXTexCustomized.h>
 
 #pragma comment(lib,"dxguid.lib")
 
 namespace gfxshim
 {
+    // Deprecated
     static void TransitionResource(
                 ID3D12GraphicsCommandList* command_list,
                 ID3D12Resource* resource,
@@ -31,6 +32,7 @@ namespace gfxshim
         command_list->ResourceBarrier(1, &barrier_desc);
     }
 
+    // Deprecated
     static HRESULT CaptureBuffer(ID3D12CommandQueue *command_queue, ID3D12Resource *target_resource, const std::wstring &filepath,
                                 D3D12_RESOURCE_STATES before_state = D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATES after_state = D3D12_RESOURCE_STATE_RENDER_TARGET)
     {
@@ -181,7 +183,11 @@ namespace gfxshim
         return decorated_string;
     }
 
-    D3D12Tracer::D3D12Tracer() = default;
+    D3D12Tracer::D3D12Tracer()
+    {
+        fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        D3D12_WRAPPER_ASSERT(fence_event != nullptr, "Fence event can not be nullptr");
+    }
 
     D3D12Tracer &D3D12Tracer::GetInstance()
     {
@@ -214,7 +220,7 @@ namespace gfxshim
         return false;
     }
 
-    void D3D12Tracer::UpdateRTVState(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state)
+    void D3D12Tracer::UpdateRTVStatePerExecution(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state)
     {
         if (render_target_view_info_per_execution.contains(rtv_descriptor))
         {
@@ -233,12 +239,6 @@ namespace gfxshim
         }
     }
 
-    void D3D12Tracer::ClearRTVInfo()
-    {
-        if (per_draw_dump_ready.load(std::memory_order_seq_cst)) return;
-        render_target_view_info_per_execution.clear();
-    }
-
     uint32_t D3D12Tracer::IncreaseExecutionCount()
     {
         return execution_count.fetch_add(1, std::memory_order_seq_cst);
@@ -249,17 +249,27 @@ namespace gfxshim
         return execution_count.load(std::memory_order_seq_cst);
     }
 
-    void D3D12Tracer::PerDrawDump(ID3D12CommandQueue *command_queue)
+    uint32_t D3D12Tracer::IncreaseDrawCount()
     {
-        if (per_draw_dump_ready.load(std::memory_order_seq_cst)) return;
+        return draw_count.fetch_add(1, std::memory_order_seq_cst);
+    }
 
-        if (CheckExecutionCount() >= 20) return;  // TODO: just for testing per-draw-dump
+    uint32_t D3D12Tracer::CheckDrawCount() const
+    {
+        return draw_count.load(std::memory_order_seq_cst);
+    }
 
-        D3D12_WRAPPER_DEBUG("Begin to per-draw-dump");
+    void D3D12Tracer::PerExecutionDump(ID3D12CommandQueue *command_queue)
+    {
+        if (per_execution_dump_ready.load(std::memory_order_seq_cst)) return;
+
+        if (CheckExecutionCount() >= 21) return;  // TODO: just for testing per-execution-dump
+
+        D3D12_WRAPPER_DEBUG("Begin to per-execution-dump");
 
         static uint32_t index = 0;
         DumpDecoration dump_decoration{ *this, this->per_draw_dump_prefix };
-        per_draw_dump_ready.store(true, std::memory_order_seq_cst);
+        per_execution_dump_ready.store(true, std::memory_order_seq_cst);
         for (auto &&render_target_state : render_target_view_info_per_execution)
         {
             auto *target_resource = render_target_state.second.d3d12_resource;
@@ -283,9 +293,107 @@ namespace gfxshim
             }
             ++index;
         }
-        per_draw_dump_ready.store(false, std::memory_order_seq_cst);
+
+        // Clear render target view information before next execution
+        render_target_view_info_per_execution.clear();
+
+        per_execution_dump_ready.store(false, std::memory_order_seq_cst);
         IncreaseExecutionCount();
 
-        D3D12_WRAPPER_DEBUG("End per-draw-dump");
+        D3D12_WRAPPER_DEBUG("End per-execution-dump");
+    }
+
+    void D3D12Tracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    {
+        if (CheckDrawCount() > 180) return;  // TODO: test deferred per-draw-dump
+
+        D3D12_WRAPPER_DEBUG("Begin to deferred per-draw-dump");
+
+        static uint32_t index = 0;
+        DumpDecoration dump_decoration{ *this, this->per_draw_dump_prefix };
+        per_draw_dump_ready.store(true, std::memory_order_seq_cst);
+        for (auto &&render_target_state : render_target_view_info_per_draw)
+        {
+            auto *target_resource = render_target_state.second.d3d12_resource;
+            if (target_resource == nullptr)
+            {
+                continue;
+            }
+
+            auto resource_desc = target_resource->GetDesc();
+            if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            {
+                DirectX::CaptureTextureDesc capture_texture_desc{};
+                std::wstring render_target_filepath = dump_decoration.decorated_string + std::to_wstring(index) + L".bin";
+                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc);
+                capture_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
+                capture_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
+            } else
+            {
+                DirectX::CaptureTextureDesc capture_texture_desc{};
+                std::wstring render_target_filepath = dump_decoration.decorated_string + std::to_wstring(index) + L".dds";
+                DirectX::CaptureTextureDeferred(device, pCommandList, target_resource, capture_texture_desc, render_target_state.second.cube_map);
+                capture_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
+                capture_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
+            }
+            ++index;
+        }
+        IncreaseDrawCount();
+
+        D3D12_WRAPPER_DEBUG("End deferred per-draw-dump");
+    }
+
+    void D3D12Tracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value)
+    {
+        if (CheckExecutionCount() > 24) return;  // TODO: test deferred per-draw-dump
+
+        if (fence->GetCompletedValue() < fence_value)
+        {
+            fence->SetEventOnCompletion(fence_value, fence_event);
+            WaitForSingleObjectEx(fence_event, INFINITE, FALSE);
+        }
+
+        for (size_t i = 0; i < capture_texture_desc_storage_per_execution.size(); ++i)
+        {
+            auto &&capture_texture_desc = capture_texture_desc_storage_per_execution[i];
+            if (capture_texture_desc.capturedResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            {
+                DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_texture_filepath_storage[i].c_str());
+            } else
+            {
+                DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_texture_filepath_storage[i].c_str());
+            }
+            capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+        }
+
+        capture_texture_desc_storage_per_execution.clear();
+        capture_texture_filepath_storage.clear();
+        render_target_view_info_per_draw.clear();
+        IncreaseExecutionCount();
+    }
+
+    void D3D12Tracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state)
+    {
+        if (per_draw_dump_ready.load(std::memory_order_seq_cst))
+        {
+            render_target_view_info_per_draw.clear();
+            per_draw_dump_ready.store(false, std::memory_order_seq_cst);
+        }
+
+        if (render_target_view_info_per_draw.contains(rtv_descriptor))
+        {
+            render_target_view_info_per_draw[rtv_descriptor].resource_state = resource_state;
+        } else
+        {
+            ID3D12Resource *resource = nullptr;
+            bool is_cube_map = false;
+            if (render_target_view_info_storage.contains(rtv_descriptor))
+            {
+                auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
+                resource = rtv_state.d3d12_resource;
+                is_cube_map = rtv_state.cube_map;
+            }
+            render_target_view_info_per_draw[rtv_descriptor] = { resource, resource_state, is_cube_map };
+        }
     }
 }

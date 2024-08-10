@@ -117,11 +117,8 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::ExecuteCommandLists(UINT NumCo
     }
     m_pQueue->ExecuteCommandLists(NumCommandLists, real_command_lists.data());
 
-    // Per draw dump
-    gfxshim::D3D12Tracer::GetInstance().PerDrawDump(this);
-
-    // Clear rtv state in tracer
-    gfxshim::D3D12Tracer::GetInstance().ClearRTVInfo();
+    // TODO: test per-execution-dump
+    // gfxshim::D3D12Tracer::GetInstance().PerExecutionDump(this);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12CommandQueue::SetMarker(UINT Metadata, const void *pData, UINT Size)
@@ -141,7 +138,9 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::EndEvent()
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::Signal(ID3D12Fence *pFence, UINT64 Value)
 {
-    return m_pQueue->Signal(pFence, Value);
+    auto result = m_pQueue->Signal(pFence, Value);
+    gfxshim::D3D12Tracer::GetInstance().PerDrawDump(pFence, Value);  // TODO: test deferred per-draw-dump and immediate dds-dumping or bin-dumping
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::Wait(ID3D12Fence *pFence, UINT64 Value)
