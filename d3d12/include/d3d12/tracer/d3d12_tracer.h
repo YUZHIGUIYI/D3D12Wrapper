@@ -54,6 +54,13 @@ namespace gfxshim
         D3D12Tracer();
 
     public:
+        ~D3D12Tracer();
+
+        D3D12Tracer(const D3D12Tracer &) = delete;
+        D3D12Tracer &operator=(const D3D12Tracer &) = delete;
+        D3D12Tracer(D3D12Tracer &&) = delete;
+        D3D12Tracer &operator=(D3D12Tracer &&) = delete;
+
         static D3D12Tracer &GetInstance();
 
         // Store render target view resource during creation

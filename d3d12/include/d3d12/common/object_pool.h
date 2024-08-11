@@ -33,7 +33,7 @@ namespace util::details
         { mutex.unlock() } -> std::same_as<void>;
     };
 
-    inline void* memalign_alloc(size_t alignment, size_t size)
+    inline void *memalign_alloc(size_t alignment, size_t size)
     {
         return _aligned_malloc(size, alignment);
     }
@@ -50,12 +50,12 @@ namespace util::details
         virtual ~ObjectPool() = default;
 
         template <typename ... Args>
-        T* construct_at_impl(Args&& ... args)
+        T *construct_at_impl(Args&& ... args)
         {
             if (m_vacants.empty())
             {
                 uint32_t num_objects = 16u << m_memory.size();
-                T* ptr = static_cast<T *>(memalign_alloc(std::max<size_t>(64, alignof(T)),
+                T *ptr = static_cast<T *>(memalign_alloc(std::max<size_t>(64, alignof(T)),
                                                         num_objects * sizeof(T)));
 
                 if (!ptr) return nullptr;
@@ -68,10 +68,10 @@ namespace util::details
                 m_memory.emplace_back(ptr);
             }
 
-            T* ptr = m_vacants.back();
+            T *ptr = m_vacants.back();
             m_vacants.pop_back();
-            new (ptr) T(std::forward<Args>(args)...);
-            return ptr;
+            T *placement_ptr = new (ptr) T(std::forward<Args>(args)...);
+            return placement_ptr;
         }
 
         void destroy_at_impl(T *ptr)
@@ -90,7 +90,7 @@ namespace util::details
         std::vector<T *> m_vacants;
         struct AlignedMallocDeleter
         {
-            void operator()(T* ptr) const
+            void operator()(T *ptr) const
             {
                 memalign_free(ptr);
             }
@@ -105,13 +105,13 @@ namespace util::details
         ~CustomizedObjectPool() override = default;
 
         template <typename ... Args>
-        T* construct_at(Args&& ... args)
+        T *construct_at(Args&& ... args)
         {
             std::lock_guard<Mutex> lock_guard{ m_mutex };
             return ObjectPool<T>::construct_at_impl(std::forward<Args>(args)...);
         }
 
-        void destroy_at(T* ptr)
+        void destroy_at(T *ptr)
         {
             std::lock_guard<Mutex> lock_guard{ m_mutex };
             ObjectPool<T>::destroy_at_impl(ptr);

@@ -2,7 +2,7 @@
 // Created by ZZK on 2024/7/25.
 //
 
-#include <d3d12/core/d3d12_hook_manager.h>
+#include <d3d12/tracer/d3d12_hook_manager.h>
 #include <d3d12/core/d3d12_device_wrap.h>
 #include <d3d12/core/d3d12_command_queue_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>

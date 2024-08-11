@@ -1,4 +1,4 @@
-#include <d3d12/core/d3d12_hook_manager.h>
+#include <d3d12/tracer/d3d12_hook_manager.h>
 
 HRESULT WINAPI D3D12GetDebugInterface(_In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug)
 {

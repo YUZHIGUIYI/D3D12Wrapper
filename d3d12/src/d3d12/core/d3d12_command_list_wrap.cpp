@@ -1,7 +1,7 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
-#include <d3d12/core/d3d12_tracer.h>
+#include <d3d12/tracer/d3d12_tracer.h>
 
 namespace gfxshim
 {

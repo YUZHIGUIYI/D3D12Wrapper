@@ -2,7 +2,7 @@
 // Created by ZZK on 2024/7/31.
 //
 
-#include <d3d12/core/d3d12_tracer.h>
+#include <d3d12/tracer/d3d12_tracer.h>
 #include <numeric>
 #include <DirectXTexCustomized.h>
 
@@ -187,6 +187,14 @@ namespace gfxshim
     {
         fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         D3D12_WRAPPER_ASSERT(fence_event != nullptr, "Fence event can not be nullptr");
+    }
+
+    D3D12Tracer::~D3D12Tracer()
+    {
+        if (fence_event != nullptr)
+        {
+            CloseHandle(fence_event);
+        }
     }
 
     D3D12Tracer &D3D12Tracer::GetInstance()
