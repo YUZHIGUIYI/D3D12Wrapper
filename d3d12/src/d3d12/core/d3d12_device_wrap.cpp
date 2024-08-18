@@ -600,6 +600,11 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateDepthStencilView(ID3D12Resourc
                                                 D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
 {
     m_pDevice->CreateDepthStencilView(pResource, pDesc, DestDescriptor);
+    if (pResource != nullptr && pDesc != nullptr)
+    {
+        gfxshim::D3D12Tracer::GetInstance().StoreDSVAndResource(DestDescriptor.ptr, pResource, pDesc);
+        D3D12_WRAPPER_DEBUG("Create depth stencil view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12Device::CreateSampler(const D3D12_SAMPLER_DESC *pDesc,

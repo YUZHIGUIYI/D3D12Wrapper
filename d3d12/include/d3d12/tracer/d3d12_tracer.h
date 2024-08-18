@@ -19,21 +19,31 @@ namespace gfxshim
         bool cube_map = false;
     };
 
+    struct DepthStencilViewInfo
+    {
+        ID3D12Resource *d3d12_resource = nullptr;
+        D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+    };
+
     struct D3D12Tracer
     {
     private:
-        // Per execution dump assets
+        // Render target view and its creation resource
         std::unordered_map<uint64_t, RenderTargetViewInfo> render_target_view_info_storage;
-        std::unordered_map<uint64_t, RenderTargetViewInfo> render_target_view_info_per_execution;
+        // Depth stencil view and its creation resource
+        std::unordered_map<uint64_t, DepthStencilViewInfo> depth_stencil_view_info_storage;
 
-        // Resource and its render target view map
-        std::unordered_map<ID3D12Resource *, uint64_t> resource_to_rtv_map;
+        // Per execution dump assets
+        std::unordered_map<uint64_t, RenderTargetViewInfo> render_target_view_info_per_execution;
 
         // Per draw dump assets
         std::unordered_map<uint64_t, RenderTargetViewInfo> render_target_view_info_per_draw;
-        std::vector<DirectX::CaptureTextureDesc> capture_texture_desc_storage_per_execution;
+        std::unordered_map<uint64_t, DepthStencilViewInfo> depth_stencil_view_info_per_draw;
+        std::vector<DirectX::CaptureTextureDesc> capture_rtv_texture_desc_storage_per_execution;
+        std::vector<DirectX::CaptureTextureDesc> capture_dsv_texture_desc_storage_per_execution;
         std::vector<DirectX::CaptureTextureDesc> capture_texture_desc_old_storage;
-        std::vector<std::wstring> capture_texture_filepath_storage;
+        std::vector<std::wstring> capture_rtv_texture_filepath_storage;
+        std::vector<std::wstring> capture_dsv_texture_filepath_storage;
         HANDLE fence_event = nullptr;
 
         std::wstring per_draw_dump_prefix = L"ExecuteCM_";
@@ -42,9 +52,16 @@ namespace gfxshim
         std::atomic<bool> per_execution_dump_ready{ false };
         std::atomic<bool> per_draw_dump_ready{ false };
 
+        enum class DecorationFlag : uint8_t
+        {
+            Dump_RTV,
+            Dump_DSV,
+            Dump_UAV,
+        };
+
         struct DumpDecoration
         {
-            DumpDecoration(D3D12Tracer &in_tracer, const std::wstring &in_string);
+            DumpDecoration(D3D12Tracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag);
             std::wstring &operator()();
             D3D12Tracer  &tracer;
             std::wstring decorated_string;
@@ -66,6 +83,9 @@ namespace gfxshim
         // Store render target view resource during creation
         void StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc);
 
+        // Store depth stencil view resource during creation
+        void StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc);
+
         // Check whether rtv resource has been included
         bool CheckRTVResourceSavedStatus(ID3D12Resource *resource) const;
 
@@ -82,7 +102,10 @@ namespace gfxshim
         void PerDrawDump(ID3D12Fence *fence, uint64_t fence_value);
 
         // Update render target view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
-        void UpdateRTVStatePerDraw(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET);
+        void UpdateRTVStatePerDraw(uint64_t rtv_descriptor);
+
+        // Update depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
+        void UpdateDSVStatePerDraw(uint64_t dsv_descriptor);
 
     private:
         uint32_t IncreaseExecutionCount();
