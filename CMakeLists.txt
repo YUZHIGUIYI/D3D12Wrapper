@@ -10,11 +10,11 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/bin)
 # spdlog
 add_subdirectory(external/spdlog)
 
-# Microsoft ScreenGrab
-add_subdirectory(external/ScreenGrab)
-
 # DirectXTex
 add_subdirectory(external/DirectXTex)
+
+# DirectX-Headers
+add_subdirectory(external/DirectX-Headers)
 
 # d3d12
 add_subdirectory(d3d12)

@@ -134,7 +134,8 @@ namespace gfxshim
 
             if(riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
                 riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
-                riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10))
+                riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) || riid == __uuidof(ID3D12Device12) ||
+                riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
             {
                 real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
                 auto *wrapped_device = ConstructResource<WrappedID3D12Device>(real_device);

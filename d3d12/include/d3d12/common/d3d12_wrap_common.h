@@ -4,24 +4,17 @@
 
 #pragma once
 
-#include <d3d12.h>
-#include <d3dcommon.h>
+#include <directx/d3d12.h>
+#include <directx/d3dcommon.h>
 #include <guiddef.h>
 #include <windef.h>
-#include <minwinbase.h>
 #include <dxgi.h>
-#include <dxgi1_2.h>
-#include <dxgi1_3.h>
-#include <dxgi1_4.h>
-#include <dxgi1_5.h>
-#include <dxgi1_6.h>
-#include <dxgicommon.h>
-#include <dxgiformat.h>
-#include <dxgitype.h>
 #include <atomic>
+#include <unordered_map>
+#include <vector>
 #include <cassert>
 #include <d3d12/common/logger.h>
-#include <wrl\client.h>
+#include <wrl/client.h>
 
 #if defined(__GNUC__) || defined(__clang__)
 #define SHIM_FUNC_SIGNATURE __PRETTY_FUNCTION__

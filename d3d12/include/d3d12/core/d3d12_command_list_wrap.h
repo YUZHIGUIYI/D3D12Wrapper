@@ -1,8 +1,6 @@
 #pragma once
 
 #include <d3d12/common/d3d12_wrap_common.h>
-#include <unordered_map>
-#include <mutex>
 
 namespace gfxshim
 {
@@ -283,12 +281,17 @@ class WrappedID3D12GraphicsCommandList;
 
 class WrappedID3D12CommandAllocator;
 
-struct WrappedID3D12DebugCommandList : public ID3D12DebugCommandList2
+class WrappedID3D12DebugCommandList : public ID3D12DebugCommandList2
 {
-    ID3D12DebugCommandList *m_pDebugList   = nullptr;
-    ID3D12DebugCommandList1 *m_pDebugList1 = nullptr;
-    ID3D12DebugCommandList2 *m_pDebugList2 = nullptr;
-    WrappedID3D12GraphicsCommandList *m_pList = nullptr;
+private:
+    ID3D12DebugCommandList *m_pDebugList      = nullptr;
+    ID3D12DebugCommandList1 *m_pDebugList1    = nullptr;
+    ID3D12DebugCommandList2 *m_pDebugList2    = nullptr;
+
+public:
+    explicit WrappedID3D12DebugCommandList(ID3D12DebugCommandList *real_command_list);
+
+    ~WrappedID3D12DebugCommandList();
 
     // Implement IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) final;
@@ -312,17 +315,20 @@ struct WrappedID3D12DebugCommandList : public ID3D12DebugCommandList2
                                                 void *pData, UINT DataSize) final;
 };
 
-class WrappedID3D12GraphicsCommandList : public ID3D12GraphicsCommandList7
+class WrappedID3D12GraphicsCommandList final : public ID3D12GraphicsCommandList10
 {
 private:
-    ID3D12GraphicsCommandList  *m_pList  = nullptr;
-    ID3D12GraphicsCommandList1 *m_pList1 = nullptr;
-    ID3D12GraphicsCommandList2 *m_pList2 = nullptr;
-    ID3D12GraphicsCommandList3 *m_pList3 = nullptr;
-    ID3D12GraphicsCommandList4 *m_pList4 = nullptr;
-    ID3D12GraphicsCommandList5 *m_pList5 = nullptr;
-    ID3D12GraphicsCommandList6 *m_pList6 = nullptr;
-    ID3D12GraphicsCommandList7 *m_pList7 = nullptr;
+    ID3D12GraphicsCommandList   *m_pList   = nullptr;
+    ID3D12GraphicsCommandList1  *m_pList1  = nullptr;
+    ID3D12GraphicsCommandList2  *m_pList2  = nullptr;
+    ID3D12GraphicsCommandList3  *m_pList3  = nullptr;
+    ID3D12GraphicsCommandList4  *m_pList4  = nullptr;
+    ID3D12GraphicsCommandList5  *m_pList5  = nullptr;
+    ID3D12GraphicsCommandList6  *m_pList6  = nullptr;
+    ID3D12GraphicsCommandList7  *m_pList7  = nullptr;
+    ID3D12GraphicsCommandList8  *m_pList8  = nullptr;
+    ID3D12GraphicsCommandList9  *m_pList9  = nullptr;
+    ID3D12GraphicsCommandList10 *m_pList10 = nullptr;
 
     WrappedID3D12CommandAllocator *m_wrapped_command_allocator = nullptr;
     WrappedID3D12Device *m_wrapped_device = nullptr;
@@ -601,4 +607,25 @@ public:
     // Implement ID3D12GraphicsCommandList7
     void STDMETHODCALLTYPE Barrier(UINT32 NumBarrierGroups,
                         const D3D12_BARRIER_GROUP *pBarrierGroups) final;
+
+    // Implement ID3D12GraphicsCommandList8
+    void STDMETHODCALLTYPE OMSetFrontAndBackStencilRef(
+            _In_  UINT FrontStencilRef,
+            _In_  UINT BackStencilRef) final;
+
+    // Implement ID3D12GraphicsCommandList9
+    void STDMETHODCALLTYPE RSSetDepthBias(
+            _In_  FLOAT DepthBias,
+            _In_  FLOAT DepthBiasClamp,
+            _In_  FLOAT SlopeScaledDepthBias) final;
+
+    void STDMETHODCALLTYPE IASetIndexBufferStripCutValue(
+            _In_  D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue) final;
+
+    // Implement ID3D12GraphicsCommandList10
+    void STDMETHODCALLTYPE SetProgram(
+            _In_  const D3D12_SET_PROGRAM_DESC *pDesc) final;
+
+    void STDMETHODCALLTYPE DispatchGraph(
+            _In_  const D3D12_DISPATCH_GRAPH_DESC *pDesc) final;
 };

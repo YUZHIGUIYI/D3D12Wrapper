@@ -1,22 +1,22 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 
+WrappedID3D12DebugCommandList::WrappedID3D12DebugCommandList(ID3D12DebugCommandList *real_command_list)
+: m_pDebugList(real_command_list)
+{
+    if (m_pDebugList)
+    {
+        m_pDebugList->QueryInterface(__uuidof(ID3D12DebugCommandList1), (void **)&m_pDebugList1);
+        m_pDebugList->QueryInterface(__uuidof(ID3D12DebugCommandList2), (void **)&m_pDebugList2);
+        m_pDebugList->AddRef();
+    }
+}
+WrappedID3D12DebugCommandList::~WrappedID3D12DebugCommandList() = default;
+
 HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::QueryInterface(REFIID riid, void **ppvObject)
 {
-    if(riid == __uuidof(ID3D12DebugCommandList))
+    if(riid == __uuidof(ID3D12DebugCommandList) || riid == __uuidof(ID3D12DebugCommandList1) || riid == __uuidof(ID3D12DebugCommandList2))
     {
-        *ppvObject = (ID3D12DebugCommandList *)this;
-        AddRef();
-        return S_OK;
-    }
-    else if(riid == __uuidof(ID3D12DebugCommandList1))
-    {
-        *ppvObject = (ID3D12DebugCommandList1 *)this;
-        AddRef();
-        return S_OK;
-    }
-    else if(riid == __uuidof(ID3D12DebugCommandList2))
-    {
-        *ppvObject = (ID3D12DebugCommandList2 *)this;
+        *ppvObject = this;
         AddRef();
         return S_OK;
     }
@@ -26,51 +26,30 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::QueryInterface(REFIID r
 
 ULONG STDMETHODCALLTYPE WrappedID3D12DebugCommandList::AddRef()
 {
-    if (m_pList)
-    {
-        m_pList->AddRef();
-    }
-    return 1;
+    return m_pDebugList->AddRef();
 }
 
 ULONG STDMETHODCALLTYPE WrappedID3D12DebugCommandList::Release()
 {
-    if (m_pList)
-    {
-        m_pList->Release();
-    }
-    return 1;
+    return m_pDebugList->Release();
 }
 
 BOOL STDMETHODCALLTYPE WrappedID3D12DebugCommandList::AssertResourceState(ID3D12Resource *pResource, UINT Subresource, UINT State)
 {
-    if (m_pDebugList)
-    {
-        return m_pDebugList->AssertResourceState(pResource, Subresource, State);
-    }
-    return TRUE;
+    return m_pDebugList->AssertResourceState(pResource, Subresource, State);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::SetFeatureMask(D3D12_DEBUG_FEATURE Mask)
 {
-    if (m_pDebugList)
-    {
-        return m_pDebugList->SetFeatureMask(Mask);
-    }
-    return S_OK;
+    return m_pDebugList->SetFeatureMask(Mask);
 }
 
 D3D12_DEBUG_FEATURE STDMETHODCALLTYPE WrappedID3D12DebugCommandList::GetFeatureMask()
 {
-    if (m_pDebugList)
-    {
-        return m_pDebugList->GetFeatureMask();
-    }
-    return D3D12_DEBUG_FEATURE_NONE;
+    return m_pDebugList->GetFeatureMask();
 }
 
-HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::SetDebugParameter(D3D12_DEBUG_COMMAND_LIST_PARAMETER_TYPE Type,
-                                            	const void *pData, UINT DataSize)
+HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandList::SetDebugParameter(D3D12_DEBUG_COMMAND_LIST_PARAMETER_TYPE Type, const void *pData, UINT DataSize)
 {
     if (m_pDebugList1)
     {

@@ -222,7 +222,7 @@ namespace gfxshim
     };
 }
 
-class WrappedID3D12Device : public ID3D12Device10
+class WrappedID3D12Device : public ID3D12Device14
 {
 private:
     ID3D12Device   *m_pDevice   = nullptr;
@@ -236,6 +236,10 @@ private:
     ID3D12Device8  *m_pDevice8  = nullptr;
     ID3D12Device9  *m_pDevice9  = nullptr;
     ID3D12Device10 *m_pDevice10 = nullptr;
+    ID3D12Device11 *m_pDevice11 = nullptr;
+    ID3D12Device12 *m_pDevice12 = nullptr;
+    ID3D12Device13 *m_pDevice13 = nullptr;
+    ID3D12Device14 *m_pDevice14 = nullptr;
 
 public:
     explicit WrappedID3D12Device(ID3D12Device *real_device);
@@ -544,7 +548,7 @@ public:
                                                 _In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                 _In_opt_  ID3D12ProtectedResourceSession *pProtectedSession,
                                                 UINT32 NumCastableFormats,
-                                                _In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+                                                _In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
                                                 REFIID riidResource,
                                                 _COM_Outptr_opt_  void **ppvResource) override;
 
@@ -555,7 +559,7 @@ public:
                                                 D3D12_BARRIER_LAYOUT InitialLayout,
                                                 _In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                 UINT32 NumCastableFormats,
-                                                _In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+                                                _In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
                                                 REFIID riid,
                                                 _COM_Outptr_opt_  void **ppvResource) override;
 
@@ -565,8 +569,36 @@ public:
                                                 _In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
                                                 _In_opt_  ID3D12ProtectedResourceSession *pProtectedSession,
                                                 UINT32 NumCastableFormats,
-                                                _In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+                                                _In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
                                                 REFIID riid,
                                                 _COM_Outptr_opt_  void **ppvResource) override;
+
+    // Implement ID3D12Device11
+    void STDMETHODCALLTYPE CreateSampler2(_In_  const D3D12_SAMPLER_DESC2 *pDesc, _In_  D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) override;
+
+    // Implement ID3D12Device12
+    D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE GetResourceAllocationInfo3(
+            UINT visibleMask,
+            UINT numResourceDescs,
+            _In_reads_(numResourceDescs)  const D3D12_RESOURCE_DESC1 *pResourceDescs,
+            _In_opt_count_(numResourceDescs)  const UINT32 *pNumCastableFormats,
+            _In_opt_count_(numResourceDescs)  const DXGI_FORMAT *const *ppCastableFormats,
+            _Out_writes_opt_(numResourceDescs)  D3D12_RESOURCE_ALLOCATION_INFO1 *pResourceAllocationInfo1) override;
+
+    // Implement ID3D12Device13
+    HRESULT STDMETHODCALLTYPE OpenExistingHeapFromAddress1(
+            _In_  const void *pAddress,
+            SIZE_T size,
+            REFIID riid,
+            _COM_Outptr_  void **ppvHeap) override;
+
+    // Implement ID3D12Device14
+    HRESULT STDMETHODCALLTYPE CreateRootSignatureFromSubobjectInLibrary(
+            _In_  UINT nodeMask,
+            _In_reads_(blobLengthInBytes)  const void *pLibraryBlob,
+            _In_  SIZE_T blobLengthInBytes,
+            _In_opt_  LPCWSTR subobjectName,
+            REFIID riid,
+            _COM_Outptr_  void **ppvRootSignature) override;
 };
 

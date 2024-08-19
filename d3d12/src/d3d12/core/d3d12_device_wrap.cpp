@@ -364,6 +364,10 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
         m_pDevice->QueryInterface(__uuidof(ID3D12Device8), (void **)&m_pDevice8);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device9), (void **)&m_pDevice9);
         m_pDevice->QueryInterface(__uuidof(ID3D12Device10), (void **)&m_pDevice10);
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device11), (void **)&m_pDevice11);
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device12), (void **)&m_pDevice12);
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device13), (void **)&m_pDevice13);
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device14), (void **)&m_pDevice14);
 
         m_pDevice->AddRef();
     }
@@ -380,7 +384,8 @@ HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
 
     if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) ||
         riid == __uuidof(ID3D12Device4) || riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) ||
-        riid == __uuidof(ID3D12Device8) || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10))
+        riid == __uuidof(ID3D12Device8) || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) ||
+        riid == __uuidof(ID3D12Device12) || riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
     {
         *ppvDevice = this;
         this->AddRef();
@@ -523,7 +528,8 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
             riid == __uuidof(ID3D12GraphicsCommandList1) || riid == __uuidof(ID3D12GraphicsCommandList2) ||
             riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4) ||
             riid == __uuidof(ID3D12GraphicsCommandList5) || riid == __uuidof(ID3D12GraphicsCommandList6) ||
-            riid == __uuidof(ID3D12GraphicsCommandList7))
+            riid == __uuidof(ID3D12GraphicsCommandList7) || riid == __uuidof(ID3D12GraphicsCommandList8) ||
+            riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
         {
             auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
             auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().
@@ -831,7 +837,8 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList1(UINT nodeMask,
         D3D12_WRAPPER_DEBUG("Real command list1 pointer: {}", *ppCommandList);
         if (riid == __uuidof(ID3D12GraphicsCommandList) || riid == __uuidof(ID3D12GraphicsCommandList1) || riid == __uuidof(ID3D12GraphicsCommandList2) ||
             riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4) || riid == __uuidof(ID3D12GraphicsCommandList5) ||
-            riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7))
+            riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7) || riid == __uuidof(ID3D12GraphicsCommandList8) ||
+            riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
         {
             auto real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
             auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, nullptr);
@@ -1055,7 +1062,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue1(const D3D12_C
         if(riid == __uuidof(ID3D12CommandQueue))
         {
             auto *real_queue = reinterpret_cast<ID3D12CommandQueue *>(*ppCommandQueue);
-            auto *wrapped_command_queue = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandQueue>(real_queue, this);// new WrappedID3D12CommandQueue(real_queue, this);
+            auto *wrapped_command_queue = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandQueue>(real_queue, this);
             *ppCommandQueue = wrapped_command_queue;
             D3D12_WRAPPER_DEBUG("Wrapped command queue pointer: {}", reinterpret_cast<void *>(wrapped_command_queue));
         }
@@ -1073,7 +1080,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource3(
             				_In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
             				_In_opt_  ID3D12ProtectedResourceSession *pProtectedSession,
             				UINT32 NumCastableFormats,
-            				_In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+            				_In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
             				REFIID riidResource,
             				_COM_Outptr_opt_  void **ppvResource)
 {
@@ -1089,7 +1096,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreatePlacedResource2(
             					D3D12_BARRIER_LAYOUT InitialLayout,
             					_In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
             					UINT32 NumCastableFormats,
-            					_In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+            					_In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
             					REFIID riid,
             					_COM_Outptr_opt_  void **ppvResource)
 {
@@ -1104,11 +1111,51 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateReservedResource2(
             					_In_opt_  const D3D12_CLEAR_VALUE *pOptimizedClearValue,
             					_In_opt_  ID3D12ProtectedResourceSession *pProtectedSession,
             					UINT32 NumCastableFormats,
-            					_In_opt_count_(NumCastableFormats)  DXGI_FORMAT *pCastableFormats,
+            					_In_opt_count_(NumCastableFormats) const DXGI_FORMAT *pCastableFormats,
             					REFIID riid,
             					_COM_Outptr_opt_  void **ppvResource)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pDevice10->CreateReservedResource2(pDesc, InitialLayout, pOptimizedClearValue, pProtectedSession, 
                 NumCastableFormats, pCastableFormats, riid, ppvResource);
+}
+
+void STDMETHODCALLTYPE WrappedID3D12Device::CreateSampler2(_In_  const D3D12_SAMPLER_DESC2 *pDesc, _In_  D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    m_pDevice11->CreateSampler2(pDesc, DestDescriptor);
+}
+
+D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE WrappedID3D12Device::GetResourceAllocationInfo3(
+        UINT visibleMask,
+        UINT numResourceDescs,
+        _In_reads_(numResourceDescs)  const D3D12_RESOURCE_DESC1 *pResourceDescs,
+        _In_opt_count_(numResourceDescs)  const UINT32 *pNumCastableFormats,
+        _In_opt_count_(numResourceDescs)  const DXGI_FORMAT *const *ppCastableFormats,
+        _Out_writes_opt_(numResourceDescs)  D3D12_RESOURCE_ALLOCATION_INFO1 *pResourceAllocationInfo1)
+{
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    return m_pDevice12->GetResourceAllocationInfo3(visibleMask, numResourceDescs, pResourceDescs, pNumCastableFormats, ppCastableFormats, pResourceAllocationInfo1);
+}
+
+HRESULT STDMETHODCALLTYPE WrappedID3D12Device::OpenExistingHeapFromAddress1(
+        _In_  const void *pAddress,
+        SIZE_T size,
+        REFIID riid,
+        _COM_Outptr_  void **ppvHeap)
+{
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    return m_pDevice13->OpenExistingHeapFromAddress1(pAddress, size, riid, ppvHeap);
+}
+
+HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateRootSignatureFromSubobjectInLibrary(
+        _In_  UINT nodeMask,
+        _In_reads_(blobLengthInBytes)  const void *pLibraryBlob,
+        _In_  SIZE_T blobLengthInBytes,
+        _In_opt_  LPCWSTR subobjectName,
+        REFIID riid,
+        _COM_Outptr_  void **ppvRootSignature)
+{
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    return m_pDevice14->CreateRootSignatureFromSubobjectInLibrary(nodeMask, pLibraryBlob, blobLengthInBytes, subobjectName, riid, ppvRootSignature);
 }
