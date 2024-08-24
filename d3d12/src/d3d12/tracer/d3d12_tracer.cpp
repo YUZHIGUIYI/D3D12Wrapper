@@ -6,8 +6,6 @@
 #include <numeric>
 #include <DirectXTexCustomized.h>
 
-#pragma comment(lib,"dxguid.lib")
-
 namespace gfxshim
 {
     D3D12Tracer::DumpDecoration::DumpDecoration(gfxshim::D3D12Tracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
@@ -62,7 +60,7 @@ namespace gfxshim
                 is_cube_map = true;
             }
         }
-        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map };
+        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, *render_target_view_desc, D3D12_RESOURCE_STATE_RENDER_TARGET,is_cube_map };
     }
 
     void D3D12Tracer::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)
@@ -90,14 +88,16 @@ namespace gfxshim
         } else
         {
             ID3D12Resource *resource = nullptr;
+            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
             bool is_cube_map = false;
             if (render_target_view_info_storage.contains(rtv_descriptor))
             {
                 auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
                 resource = rtv_state.d3d12_resource;
+                rtv_desc = rtv_state.rtv_desc;
                 is_cube_map = rtv_state.cube_map;
             }
-            render_target_view_info_per_execution[rtv_descriptor] = { resource, resource_state, is_cube_map };
+            render_target_view_info_per_execution[rtv_descriptor] = { resource, rtv_desc, resource_state,  is_cube_map };
         }
     }
 
@@ -180,6 +180,7 @@ namespace gfxshim
         for (auto &&render_target_state : render_target_view_info_per_draw)
         {
             auto *target_resource = render_target_state.second.d3d12_resource;
+            auto rtv_desc = render_target_state.second.rtv_desc;
             if (target_resource == nullptr)
             {
                 continue;
@@ -196,7 +197,7 @@ namespace gfxshim
             } else
             {
                 render_target_filepath += L".dds";
-                DirectX::CaptureTextureDeferred(device, pCommandList, target_resource, capture_texture_desc, render_target_state.second.cube_map);
+                DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, render_target_state.second.cube_map);
             }
             capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             capture_rtv_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
@@ -282,14 +283,16 @@ namespace gfxshim
         } else
         {
             ID3D12Resource *resource = nullptr;
+            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
             bool is_cube_map = false;
             if (render_target_view_info_storage.contains(rtv_descriptor))
             {
                 auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
                 resource = rtv_state.d3d12_resource;
+                rtv_desc = rtv_state.rtv_desc;
                 is_cube_map = rtv_state.cube_map;
             }
-            render_target_view_info_per_draw.try_emplace(rtv_descriptor, resource, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map);
+            render_target_view_info_per_draw.try_emplace(rtv_descriptor, resource, rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map);
         }
     }
 

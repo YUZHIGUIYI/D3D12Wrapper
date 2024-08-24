@@ -15,6 +15,7 @@ namespace gfxshim
     struct RenderTargetViewInfo
     {
         ID3D12Resource *d3d12_resource = nullptr;
+        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
         D3D12_RESOURCE_STATES resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
         bool cube_map = false;
     };
