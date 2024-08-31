@@ -79,6 +79,127 @@ namespace gfxshim
         }
     }
 
+    void D3D12HookManager::RegisterCommandListTracer(ID3D12GraphicsCommandList *command_list_pointer)
+    {
+        if (!command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer] = std::make_unique<D3D12Tracer>(device_tracer);
+        }
+    }
+
+    void D3D12HookManager::StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc)
+    {
+        device_tracer.StoreRTVAndResource(rtv_descriptor, resource, render_target_view_desc);
+    }
+
+    void D3D12HookManager::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)
+    {
+        device_tracer.StoreDSVAndResource(dsv_descriptor, resource, depth_stencil_view_desc);
+    }
+
+    void D3D12HookManager::StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc)
+    {
+        device_tracer.StoreUAVAndResource(uav_descriptor, resource, unordered_access_view_desc);
+    }
+
+    void D3D12HookManager::StoreBlobToRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_ROOT_SIGNATURE_DESC *root_signature_desc)
+    {
+        device_tracer.StoreBlobToRootSignatureDescMapping(blob_pointer, root_signature_desc);
+    }
+
+    void D3D12HookManager::StoreBlobToVersionedRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *versioned_root_signature_desc)
+    {
+        device_tracer.StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, versioned_root_signature_desc);
+    }
+
+    void D3D12HookManager::UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature)
+    {
+        device_tracer.UpdateBlobToRootSignatureMapping(blob_pointer, root_signature);
+    }
+
+    void D3D12HookManager::SetDescriptorSize(ID3D12Device *device)
+    {
+        device_tracer.SetDescriptorSize(device);
+    }
+
+    void D3D12HookManager::UpdateRTVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t rtv_descriptor)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->UpdateRTVStatePerDraw(rtv_descriptor);
+        }
+    }
+
+    void D3D12HookManager::UpdateDSVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t dsv_descriptor)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->UpdateDSVStatePerDraw(dsv_descriptor);
+        }
+    }
+
+    void D3D12HookManager::UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t uav_descriptor)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->UpdateUAVStatePerDispatch(uav_descriptor);
+        }
+    }
+
+    void D3D12HookManager::UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint32_t root_parameter_index, uint64_t uav_descriptor)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->UpdateUAVStatePerDispatch(root_parameter_index, uav_descriptor);
+        }
+    }
+
+    void D3D12HookManager::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDraw(device, command_list_pointer);
+        }
+    }
+
+    void D3D12HookManager::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDispatch(device, command_list_pointer);
+        }
+    }
+
+    void D3D12HookManager::ResetDescriptorHeaps(ID3D12GraphicsCommandList *command_list_pointer, uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_pointer)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->ResetDescriptorHeaps(descriptor_heaps_num, descriptor_heaps_pointer);
+        }
+    }
+
+    void D3D12HookManager::ResetComputePipelineRootSignature(ID3D12GraphicsCommandList *command_list_pointer, ID3D12RootSignature *compute_root_signature)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->ResetComputePipelineRootSignature(compute_root_signature);
+        }
+    }
+
+    void D3D12HookManager::PerDrawAndDispatchDump(std::span<ID3D12GraphicsCommandList *> graphics_command_list_pointers, ID3D12Fence *fence, uint64_t fence_value)
+    {
+        for (auto &&command_list_pointer : graphics_command_list_pointers)
+        {
+            if (command_list_tracer_storage.contains(command_list_pointer))
+            {
+                auto &&command_list_tracer = command_list_tracer_storage[command_list_pointer];
+                command_list_tracer->PerDrawDump(fence, fence_value);
+                command_list_tracer->PerDispatchDump(fence, fence_value);
+                command_list_tracer->Advance();
+            }
+        }
+    }
+
     const D3D12DispatchTable &D3D12HookManager::DispatchTable() const
     {
         return dispatch_table;
@@ -139,6 +260,7 @@ namespace gfxshim
             {
                 real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
                 auto *wrapped_device = ConstructResource<WrappedID3D12Device>(real_device);
+                SetDescriptorSize(real_device);
                 *ppDevice = wrapped_device;
                 D3D12_WRAPPER_DEBUG("Wrapped device pointer: {}", reinterpret_cast<void *>(wrapped_device));
             }
@@ -157,6 +279,12 @@ namespace gfxshim
         if (dispatch_table.D3D12SerializeRootSignature != nullptr)
         {
             result = dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
+            if (ppBlob != nullptr && (*ppBlob) != nullptr)
+            {
+                auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
+                UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
+                StoreBlobToRootSignatureDescMapping(blob_pointer, pRootSignature);
+            }
             D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeRootSignature");
         }
         return result;
@@ -171,6 +299,12 @@ namespace gfxshim
         if (dispatch_table.D3D12SerializeVersionedRootSignature != nullptr)
         {
             result = dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
+            if (ppBlob != nullptr && (*ppBlob) != nullptr)
+            {
+                auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
+                UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
+                StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, pRootSignature);
+            }
             D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeVersionedRootSignature");
         }
         return result;

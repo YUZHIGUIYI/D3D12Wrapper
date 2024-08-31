@@ -3,13 +3,240 @@
 //
 
 #include <d3d12/tracer/d3d12_tracer.h>
-#include <numeric>
-#include <DirectXTexCustomized.h>
 
 namespace gfxshim
 {
+    static void CollectRootParameter(const uint32_t parameter_index, const D3D12_ROOT_PARAMETER1 &root_parameter, RootSignatureInfo &root_signature_info)
+    {
+        if (root_parameter.ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+        {
+            return;
+        }
+
+        auto &&root_table = root_parameter.DescriptorTable;
+        std::vector<D3D12_DESCRIPTOR_RANGE1> descriptor_ranges{};
+        descriptor_ranges.reserve(root_table.NumDescriptorRanges);
+        for (uint32_t range_index = 0; range_index < root_table.NumDescriptorRanges; ++range_index)
+        {
+            descriptor_ranges.emplace_back(root_table.pDescriptorRanges[range_index]);
+        }
+        root_signature_info.index_to_descriptor_ranges_mapping.try_emplace(parameter_index, std::move(descriptor_ranges));
+    }
+
+    static D3D12_RENDER_TARGET_VIEW_DESC TranslateUAVDescToRTVDesc(const D3D12_UNORDERED_ACCESS_VIEW_DESC &uav_desc)
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
+        switch (uav_desc.ViewDimension)
+        {
+            case D3D12_UAV_DIMENSION_BUFFER:
+            {
+                // TODO: finish
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_BUFFER;
+                rtv_desc.Buffer.FirstElement = uav_desc.Buffer.FirstElement;
+                rtv_desc.Buffer.NumElements = uav_desc.Buffer.NumElements;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE1D:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+                rtv_desc.Texture1D.MipSlice = uav_desc.Texture1D.MipSlice;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+                rtv_desc.Texture1DArray.MipSlice = uav_desc.Texture1DArray.MipSlice;
+                rtv_desc.Texture1DArray.FirstArraySlice = uav_desc.Texture1DArray.FirstArraySlice;
+                rtv_desc.Texture1DArray.ArraySize = uav_desc.Texture1DArray.ArraySize;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE2D:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                rtv_desc.Texture2D.MipSlice = uav_desc.Texture2D.MipSlice;
+                rtv_desc.Texture2D.PlaneSlice = uav_desc.Texture2D.PlaneSlice;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                rtv_desc.Texture2DArray.MipSlice = uav_desc.Texture2DArray.MipSlice;
+                rtv_desc.Texture2DArray.FirstArraySlice = uav_desc.Texture2DArray.FirstArraySlice;
+                rtv_desc.Texture2DArray.ArraySize = uav_desc.Texture2DArray.ArraySize;
+                rtv_desc.Texture2DArray.PlaneSlice = uav_desc.Texture2DArray.PlaneSlice;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE2DMS:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+                rtv_desc.Texture2DMS.UnusedField_NothingToDefine = uav_desc.Texture2DMS.UnusedField_NothingToDefine;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+                rtv_desc.Texture2DMSArray.FirstArraySlice = uav_desc.Texture2DMSArray.FirstArraySlice;
+                rtv_desc.Texture2DMSArray.ArraySize = uav_desc.Texture2DMSArray.ArraySize;
+                break;
+            }
+            case D3D12_UAV_DIMENSION_TEXTURE3D:
+            {
+                rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+                rtv_desc.Texture3D.MipSlice = uav_desc.Texture3D.MipSlice;
+                rtv_desc.Texture3D.FirstWSlice = uav_desc.Texture3D.FirstWSlice;
+                rtv_desc.Texture3D.WSize = uav_desc.Texture3D.WSize;
+                break;
+            }
+            default:
+            {
+                D3D12_WRAPPER_CRITICAL("Unsupported uav view dimension");
+                break;
+            }
+        }
+        return rtv_desc;
+    }
+
+    void D3D12DeviceTracer::StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc)
+    {
+        D3D12_RENDER_TARGET_VIEW_DESC valid_rtv_desc{};
+        if (render_target_view_desc == nullptr)
+        {
+            auto resource_desc = resource->GetDesc();
+            if (resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+            {
+                D3D12_WRAPPER_WARN("Currently only consider texture 2d when rtv desc is nullptr");
+                return;
+            }
+            if (resource_desc.SampleDesc.Count > 1U)
+            {
+                valid_rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+                valid_rtv_desc.Format = resource_desc.Format;
+            } else
+            {
+                valid_rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                valid_rtv_desc.Format = resource_desc.Format;
+                valid_rtv_desc.Texture2D.MipSlice = 0U;
+                valid_rtv_desc.Texture2D.PlaneSlice = 0U;
+            }
+        } else
+        {
+            valid_rtv_desc = *render_target_view_desc;
+        }
+
+        bool is_cube_map = false;
+        if (valid_rtv_desc.ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY)
+        {
+            if (valid_rtv_desc.Texture2DArray.FirstArraySlice == 0U && valid_rtv_desc.Texture2DArray.ArraySize == 6U)
+            {
+                is_cube_map = true;
+            }
+        }
+        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, valid_rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET,is_cube_map };
+    }
+
+    void D3D12DeviceTracer::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)
+    {
+        depth_stencil_view_info_storage[dsv_descriptor] = DepthStencilViewInfo{ resource, D3D12_RESOURCE_STATE_DEPTH_WRITE };
+    }
+
+    void D3D12DeviceTracer::StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc)
+    {
+        unordered_access_view_info_storage[uav_descriptor] = UnorderedAccessViewInfo{ resource, *unordered_access_view_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
+    }
+
+    void D3D12DeviceTracer::UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature)
+    {
+        if (blob_pointer == 0)
+        {
+            return;
+        }
+        if (blob_to_root_signature_mapping.contains(blob_pointer))
+        {
+            // Update root signature and its creation description
+            blob_to_root_signature_mapping[blob_pointer] = root_signature;
+            root_signature_pointer_to_blob_mapping.try_emplace(root_signature, blob_pointer);
+        } else
+        {
+            blob_to_root_signature_mapping[blob_pointer] = root_signature;
+        }
+    }
+
+    void D3D12DeviceTracer::StoreBlobToRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_ROOT_SIGNATURE_DESC *root_signature_desc)
+    {
+        if (root_signature_desc == nullptr)
+        {
+            return;
+        }
+
+        RootSignatureInfo root_signature_info{};
+        for (uint32_t parameter_index = 0; parameter_index < root_signature_desc->NumParameters; ++parameter_index)
+        {
+            auto &&root_parameter = root_signature_desc->pParameters[parameter_index];
+            if (root_parameter.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+            {
+                auto &&root_table = root_parameter.DescriptorTable;
+                std::vector<D3D12_DESCRIPTOR_RANGE1> descriptor_ranges{};
+                descriptor_ranges.reserve(root_table.NumDescriptorRanges);
+                for (uint32_t range_index = 0; range_index < root_table.NumDescriptorRanges; ++range_index)
+                {
+                    D3D12_DESCRIPTOR_RANGE1 range1{};
+                    range1.RangeType = root_table.pDescriptorRanges[range_index].RangeType;
+                    range1.NumDescriptors = root_table.pDescriptorRanges[range_index].NumDescriptors;
+                    range1.BaseShaderRegister = root_table.pDescriptorRanges[range_index].BaseShaderRegister;
+                    range1.RegisterSpace = root_table.pDescriptorRanges[range_index].RegisterSpace;
+                    range1.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+                    range1.OffsetInDescriptorsFromTableStart = root_table.pDescriptorRanges[range_index].OffsetInDescriptorsFromTableStart;
+                    descriptor_ranges.emplace_back(range1);
+                }
+                root_signature_info.index_to_descriptor_ranges_mapping.try_emplace(parameter_index, std::move(descriptor_ranges));
+            }
+        }
+        blob_to_root_signature_info_mapping.try_emplace(blob_pointer, std::move(root_signature_info));
+    }
+
+    void D3D12DeviceTracer::StoreBlobToVersionedRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *versioned_root_signature_desc)
+    {
+        if (versioned_root_signature_desc == nullptr)
+        {
+            return;
+        }
+
+        // Currently only concern uav and root table
+        if (versioned_root_signature_desc->Version == D3D_ROOT_SIGNATURE_VERSION_1_0)
+        {
+            return StoreBlobToRootSignatureDescMapping(blob_pointer, &versioned_root_signature_desc->Desc_1_0);
+        } else if (versioned_root_signature_desc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1)
+        {
+            RootSignatureInfo root_signature_info{};
+            auto &&root_signature_desc = versioned_root_signature_desc->Desc_1_1;
+            for (uint32_t parameter_index = 0; parameter_index < root_signature_desc.NumParameters; ++parameter_index)
+            {
+                auto &&root_parameter = root_signature_desc.pParameters[parameter_index];
+                CollectRootParameter(parameter_index, root_parameter, root_signature_info);
+            }
+            blob_to_root_signature_info_mapping.try_emplace(blob_pointer, std::move(root_signature_info));
+        } else if (versioned_root_signature_desc->Version == D3D_ROOT_SIGNATURE_VERSION_1_2)
+        {
+            RootSignatureInfo root_signature_info{};
+            auto &&root_signature_desc = versioned_root_signature_desc->Desc_1_2;
+            for (uint32_t parameter_index = 0; parameter_index < root_signature_desc.NumParameters; ++parameter_index)
+            {
+                auto &&root_parameter = root_signature_desc.pParameters[parameter_index];
+                CollectRootParameter(parameter_index, root_parameter, root_signature_info);
+            }
+            blob_to_root_signature_info_mapping.try_emplace(blob_pointer, std::move(root_signature_info));
+        } else
+        {
+            D3D12_WRAPPER_CRITICAL("Unsupported versioned root signature");
+        }
+    }
+
+    void D3D12DeviceTracer::SetDescriptorSize(ID3D12Device *device)
+    {
+        srv_uav_descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
+
     D3D12Tracer::DumpDecoration::DumpDecoration(gfxshim::D3D12Tracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
-    : tracer(in_tracer)
     {
         auto current_execution_count = in_tracer.CheckExecutionCount();
         decorated_string = in_tracer.per_draw_dump_prefix + std::to_wstring(current_execution_count);
@@ -30,7 +257,8 @@ namespace gfxshim
         return decorated_string;
     }
 
-    D3D12Tracer::D3D12Tracer()
+    D3D12Tracer::D3D12Tracer(D3D12DeviceTracer &device_tracer_ref)
+    : device_tracer(device_tracer_ref)
     {
         fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         D3D12_WRAPPER_ASSERT(fence_event != nullptr, "Fence event can not be nullptr");
@@ -41,63 +269,6 @@ namespace gfxshim
         if (fence_event != nullptr)
         {
             CloseHandle(fence_event);
-        }
-    }
-
-    D3D12Tracer &D3D12Tracer::GetInstance()
-    {
-        static D3D12Tracer d3d12_tracer{};
-        return d3d12_tracer;
-    }
-
-    void D3D12Tracer::StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc)
-    {
-        bool is_cube_map = false;
-        if (render_target_view_desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY)
-        {
-            if (render_target_view_desc->Texture2DArray.FirstArraySlice == 0 && render_target_view_desc->Texture2DArray.ArraySize == 6)
-            {
-                is_cube_map = true;
-            }
-        }
-        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, *render_target_view_desc, D3D12_RESOURCE_STATE_RENDER_TARGET,is_cube_map };
-    }
-
-    void D3D12Tracer::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)
-    {
-        depth_stencil_view_info_storage[dsv_descriptor] = DepthStencilViewInfo{ resource, D3D12_RESOURCE_STATE_DEPTH_WRITE };
-    }
-
-    bool D3D12Tracer::CheckRTVResourceSavedStatus(ID3D12Resource *resource) const
-    {
-        for (auto &&each_rtv_resource : render_target_view_info_storage)
-        {
-            if (resource == each_rtv_resource.second.d3d12_resource)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    void D3D12Tracer::UpdateRTVStatePerExecution(uint64_t rtv_descriptor, D3D12_RESOURCE_STATES resource_state)
-    {
-        if (render_target_view_info_per_execution.contains(rtv_descriptor))
-        {
-            render_target_view_info_per_execution[rtv_descriptor].resource_state = resource_state;
-        } else
-        {
-            ID3D12Resource *resource = nullptr;
-            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
-            bool is_cube_map = false;
-            if (render_target_view_info_storage.contains(rtv_descriptor))
-            {
-                auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
-                resource = rtv_state.d3d12_resource;
-                rtv_desc = rtv_state.rtv_desc;
-                is_cube_map = rtv_state.cube_map;
-            }
-            render_target_view_info_per_execution[rtv_descriptor] = { resource, rtv_desc, resource_state,  is_cube_map };
         }
     }
 
@@ -121,53 +292,19 @@ namespace gfxshim
         return draw_count.load(std::memory_order_seq_cst);
     }
 
-    void D3D12Tracer::PerExecutionDump(ID3D12CommandQueue *command_queue)
+    uint32_t D3D12Tracer::IncreaseDispatchCount()
     {
-        if (per_execution_dump_ready.load(std::memory_order_seq_cst)) return;
+        return dispatch_count.fetch_add(1, std::memory_order_seq_cst);
+    }
 
-        if (CheckExecutionCount() >= 21) return;  // TODO: just for testing per-execution-dump
-
-        D3D12_WRAPPER_DEBUG("Begin to per-execution-dump");
-
-        static uint32_t index = 0;
-        DumpDecoration dump_decoration{ *this, L"_Draw", DecorationFlag::Dump_RTV };
-        per_execution_dump_ready.store(true, std::memory_order_seq_cst);
-        for (auto &&render_target_state : render_target_view_info_per_execution)
-        {
-            auto *target_resource = render_target_state.second.d3d12_resource;
-            if (target_resource == nullptr)
-            {
-                continue;
-            }
-
-            auto resource_desc = target_resource->GetDesc();
-            if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
-            {
-                std::wstring render_target_filepath = dump_decoration.decorated_string + std::to_wstring(index) + L".bin";
-                DirectX::CaptureBufferImmediately(command_queue, target_resource, render_target_filepath.c_str());
-            } else
-            {
-                std::wstring render_target_filepath = dump_decoration.decorated_string + std::to_wstring(index) + L".dds";
-                DirectX::ScratchImage scratch_image{};
-                DirectX::CaptureTexture(command_queue, target_resource, render_target_state.second.cube_map, scratch_image);
-                const auto *image = scratch_image.GetImages();
-                DirectX::SaveToDDSFile(*image, DirectX::DDS_FLAGS_NONE, render_target_filepath.c_str());
-            }
-            ++index;
-        }
-
-        // Clear render target view information before next execution
-        render_target_view_info_per_execution.clear();
-
-        per_execution_dump_ready.store(false, std::memory_order_seq_cst);
-        IncreaseExecutionCount();
-
-        D3D12_WRAPPER_DEBUG("End per-execution-dump");
+    uint32_t D3D12Tracer::CheckDispatchCount() const
+    {
+        return dispatch_count.load(std::memory_order_seq_cst);
     }
 
     void D3D12Tracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
     {
-        if (CheckDrawCount() > 180) return;  // TODO: test deferred per-draw-dump
+        if (CheckDrawCount() > 180) return;  // TODO: test deferred per-draw-dump, limit to 180
 
         D3D12_WRAPPER_DEBUG("Begin to deferred per-draw-dump");
 
@@ -228,7 +365,10 @@ namespace gfxshim
 
     void D3D12Tracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value)
     {
-        if (CheckExecutionCount() > 24) return;  // TODO: test deferred per-draw-dump
+        if (CheckExecutionCount() > 10)
+        {
+            return;  // TODO: test deferred per-draw-dump, limit the number of executions
+        }
 
         if (fence->GetCompletedValue() < fence_value)
         {
@@ -263,7 +403,45 @@ namespace gfxshim
         capture_dsv_texture_desc_storage_per_execution.clear();
         capture_dsv_texture_filepath_storage.clear();
         depth_stencil_view_info_per_draw.clear();
+    }
 
+    void D3D12Tracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value)
+    {
+        if (CheckExecutionCount() > 10 || per_dispatch_dump_ready.load(std::memory_order_seq_cst))
+        {
+            return;  // TODO: test deferred per-dispatch-dump, limit the number of executions
+        }
+
+        per_dispatch_dump_ready.store(true, std::memory_order_seq_cst);
+
+        if (fence->GetCompletedValue() < fence_value)
+        {
+            fence->SetEventOnCompletion(fence_value, fence_event);
+            WaitForSingleObjectEx(fence_event, INFINITE, FALSE);
+        }
+
+        for (size_t i = 0; i < capture_uav_texture_desc_storage_per_execution.size(); ++i)
+        {
+            auto &&capture_texture_desc = capture_uav_texture_desc_storage_per_execution[i];
+            if (capture_texture_desc.capturedResourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            {
+                DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_uav_texture_filepath_storage[i].c_str());
+            } else
+            {
+                DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_uav_texture_filepath_storage[i].c_str());
+            }
+            capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+        }
+
+        capture_uav_texture_desc_storage_per_execution.clear();
+        capture_uav_texture_filepath_storage.clear();
+        unordered_access_view_info_per_dispatch.clear();
+
+        per_dispatch_dump_ready.store(false, std::memory_order_seq_cst);
+    }
+
+    void D3D12Tracer::Advance()
+    {
         IncreaseExecutionCount();
     }
 
@@ -285,9 +463,9 @@ namespace gfxshim
             ID3D12Resource *resource = nullptr;
             D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
             bool is_cube_map = false;
-            if (render_target_view_info_storage.contains(rtv_descriptor))
+            if (device_tracer.render_target_view_info_storage.contains(rtv_descriptor))
             {
-                auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
+                auto &&rtv_state = device_tracer.render_target_view_info_storage[rtv_descriptor];
                 resource = rtv_state.d3d12_resource;
                 rtv_desc = rtv_state.rtv_desc;
                 is_cube_map = rtv_state.cube_map;
@@ -305,12 +483,141 @@ namespace gfxshim
         } else
         {
             ID3D12Resource *resource = nullptr;
-            if (depth_stencil_view_info_storage.contains(dsv_descriptor))
+            if (device_tracer.depth_stencil_view_info_storage.contains(dsv_descriptor))
             {
-                auto &&dsv_state = depth_stencil_view_info_storage[dsv_descriptor];
+                auto &&dsv_state = device_tracer.depth_stencil_view_info_storage[dsv_descriptor];
                 resource = dsv_state.d3d12_resource;
             }
             depth_stencil_view_info_per_draw.try_emplace(dsv_descriptor, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
         }
+    }
+
+    void D3D12Tracer::ResetDescriptorHeaps(uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_ptr)
+    {
+        cur_descriptor_heaps.clear();
+        for (uint32_t i = 0; i < descriptor_heaps_num; ++i)
+        {
+            cur_descriptor_heaps.emplace_back(descriptor_heaps_ptr[i]);
+        }
+    }
+
+    void D3D12Tracer::ResetComputePipelineRootSignature(ID3D12RootSignature *compute_root_signature)
+    {
+        // Clear unordered access view collection before SetComputeRootDescriptorTable or SetComputeRootUnorderedAccessView
+        unordered_access_view_info_per_dispatch.clear();
+        if (compute_root_signature)
+        {
+            if (device_tracer.root_signature_pointer_to_blob_mapping.contains(compute_root_signature))
+            {
+                cur_compute_root_signature = compute_root_signature;
+                cur_blob_pointer = device_tracer.root_signature_pointer_to_blob_mapping[compute_root_signature];
+            }
+        }
+    }
+
+    void D3D12Tracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor)
+    {
+        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || cur_compute_root_signature == nullptr)
+        {
+            return;
+        }
+
+        // TODO: check
+        if (device_tracer.unordered_access_view_info_storage.contains(uav_descriptor))
+        {
+            unordered_access_view_info_per_dispatch[uav_descriptor] = device_tracer.unordered_access_view_info_storage[uav_descriptor];
+        }
+    }
+
+    void D3D12Tracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor)
+    {
+        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || cur_compute_root_signature == nullptr)
+        {
+            return;
+        }
+
+        auto &&cur_compute_root_signature_info = device_tracer.blob_to_root_signature_info_mapping[cur_blob_pointer];
+        if (!cur_compute_root_signature_info.index_to_descriptor_ranges_mapping.contains(root_parameter_index))
+        {
+            return;
+        }
+        auto &&descriptor_ranges = cur_compute_root_signature_info.index_to_descriptor_ranges_mapping[root_parameter_index];
+        for (auto &&descriptor_range : descriptor_ranges)
+        {
+            if (descriptor_range.RangeType != D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
+            {
+                continue;
+            }
+
+            uint64_t real_cpu_descriptor = uav_descriptor;
+            for (auto&& descriptor_heap : cur_descriptor_heaps)
+            {
+                auto heap_desc = descriptor_heap->GetDesc();
+                if (heap_desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+                {
+                    continue;
+                }
+                auto descriptors_num = heap_desc.NumDescriptors;
+                auto cpu_heap_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr;
+                auto gpu_heap_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr;
+                auto gpu_heap_end = gpu_heap_start + descriptors_num * device_tracer.srv_uav_descriptor_size;
+                if ((gpu_heap_start <= uav_descriptor) && (uav_descriptor <= gpu_heap_end))
+                {
+                    uint32_t offset_in_descriptors = (uav_descriptor - gpu_heap_start) / device_tracer.srv_uav_descriptor_size;
+                    real_cpu_descriptor = cpu_heap_start + offset_in_descriptors * device_tracer.srv_uav_descriptor_size;
+                }
+            }
+
+            if (device_tracer.unordered_access_view_info_storage.contains(real_cpu_descriptor))
+            {
+                unordered_access_view_info_per_dispatch[real_cpu_descriptor] = device_tracer.unordered_access_view_info_storage[real_cpu_descriptor];
+            }
+        }
+    }
+
+    void D3D12Tracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    {
+        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > 10)
+        {
+            return;
+        }
+
+        D3D12_WRAPPER_DEBUG("Begin to deferred per-dispatch-dump");
+
+        uint32_t uav_index = 0;
+        std::wstring dispatch_action_string = L"_Dispatch_" + std::to_wstring(dispatch_count.load(std::memory_order_seq_cst));
+        DumpDecoration dump_decoration_uav{ *this, dispatch_action_string, DecorationFlag::Dump_UAV };
+        for (auto &&unordered_access_state : unordered_access_view_info_per_dispatch)
+        {
+            auto *target_resource = unordered_access_state.second.d3d12_resource;
+            auto resource_state = unordered_access_state.second.resource_state;
+            auto uav_desc = unordered_access_state.second.uav_desc;
+            if (target_resource == nullptr)
+            {
+                continue;
+            }
+
+            auto resource_desc = target_resource->GetDesc();
+            DirectX::CaptureTextureDesc capture_texture_desc{};
+            std::wstring unordered_access_filepath = dump_decoration_uav.decorated_string + std::to_wstring(uav_index);
+            if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            {
+                unordered_access_filepath += L".bin";
+                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc,
+                                                resource_state, resource_state);
+            } else
+            {
+                unordered_access_filepath += L".dds";
+                auto rtv_desc = TranslateUAVDescToRTVDesc(uav_desc);
+                DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, false,
+                                                            resource_state, resource_state);
+            }
+            capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
+            capture_uav_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
+            ++uav_index;
+        }
+
+        IncreaseDispatchCount();
+        D3D12_WRAPPER_DEBUG("End deferred per-dispatch-dump");
     }
 }

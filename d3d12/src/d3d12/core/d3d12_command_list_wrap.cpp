@@ -1,7 +1,7 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
-#include <d3d12/tracer/d3d12_tracer.h>
+#include <d3d12/tracer/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
@@ -542,19 +542,20 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawInstanced(UINT Vert
                                 UINT StartVertexLocation, UINT StartInstanceLocation)
 {
     m_pList->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
-    gfxshim::D3D12Tracer::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, this);  // TODO: test deferred per-draw-dump
+    gfxshim::D3D12HookManager::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, m_pList);  // TODO: test deferred per-draw-dump
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::DrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount,
                                         UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
 {
     m_pList->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-    gfxshim::D3D12Tracer::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, this);  // TODO: test deferred per-draw-dump
+    gfxshim::D3D12HookManager::GetInstance().CollectStagingResourcePerDraw(m_wrapped_device, m_pList);  // TODO: test deferred per-draw-dump
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Dispatch(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ)
 {
     m_pList->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+    gfxshim::D3D12HookManager::GetInstance().CollectStagingResourcePerDispatch(m_wrapped_device, m_pList);  // TODO: test deferred per-dispatch-dump
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::CopyBufferRegion(ID3D12Resource *pDstBuffer, UINT64 DstOffset,
@@ -646,11 +647,13 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetDescriptorHeaps(UINT
                                     ID3D12DescriptorHeap *const *ppDescriptorHeaps)
 {
     m_pList->SetDescriptorHeaps(NumDescriptorHeaps, ppDescriptorHeaps);
+    gfxshim::D3D12HookManager::GetInstance().ResetDescriptorHeaps(m_pList, NumDescriptorHeaps, ppDescriptorHeaps);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetComputeRootSignature(ID3D12RootSignature *pRootSignature)
 {
     m_pList->SetComputeRootSignature(pRootSignature);
+    gfxshim::D3D12HookManager::GetInstance().ResetComputePipelineRootSignature(m_pList, pRootSignature);  // TODO: enable uav test
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetGraphicsRootSignature(ID3D12RootSignature *pRootSignature)
@@ -662,6 +665,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetComputeRootDescripto
                                                 D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
 {
     m_pList->SetComputeRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+    gfxshim::D3D12HookManager::GetInstance().UpdateUAVStatePerDispatch(m_pList, RootParameterIndex, BaseDescriptor.ptr);  // TODO: enable uav test
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable(UINT RootParameterIndex,
@@ -726,6 +730,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetComputeRootUnordered
                                                     D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
 {
     m_pList->SetComputeRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+    gfxshim::D3D12HookManager::GetInstance().UpdateUAVStatePerDispatch(m_pList, BufferLocation);  // TODO: enable uav test
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetGraphicsRootUnorderedAccessView(UINT RootParameterIndex,
@@ -761,12 +766,11 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetRenderTargets(UINT
     {
         for (uint32_t i = 0; i < NumRenderTargetDescriptors; ++i)
         {
-            // gfxshim::D3D12Tracer::GetInstance().UpdateRTVStatePerExecution(pRenderTargetDescriptors[i].ptr);  // TODO: test per-execution-dump
-            gfxshim::D3D12Tracer::GetInstance().UpdateRTVStatePerDraw(pRenderTargetDescriptors[i].ptr);  // TODO: test deferred per-draw-dump
+            gfxshim::D3D12HookManager::GetInstance().UpdateRTVStatePerDraw(m_pList, pRenderTargetDescriptors[i].ptr);  // TODO: test deferred per-draw-dump
         }
         if (pDepthStencilDescriptor != nullptr)
         {
-            gfxshim::D3D12Tracer::GetInstance().UpdateDSVStatePerDraw(pDepthStencilDescriptor->ptr);
+            gfxshim::D3D12HookManager::GetInstance().UpdateDSVStatePerDraw(m_pList, pDepthStencilDescriptor->ptr);
         }
     }
 }

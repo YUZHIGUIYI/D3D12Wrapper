@@ -3,7 +3,6 @@
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_command_allocator_wrap.h>
 #include <d3d12/tracer/d3d12_hook_manager.h>
-#include <d3d12/tracer/d3d12_tracer.h>
 
 namespace gfxshim
 {
@@ -483,7 +482,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandAllocator(D3D12_COMM
         {
             auto *real_command_allocator = reinterpret_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
             auto *wrapped_command_allocator = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandAllocator>(real_command_allocator, this);
-            *ppCommandAllocator = reinterpret_cast<ID3D12CommandAllocator *>(wrapped_command_allocator);
+            *ppCommandAllocator = wrapped_command_allocator;
             D3D12_WRAPPER_DEBUG("Wrapped command allocator pointer: {}", reinterpret_cast<void *>(wrapped_command_allocator));
         }
     } else
@@ -531,10 +530,12 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
             riid == __uuidof(ID3D12GraphicsCommandList7) || riid == __uuidof(ID3D12GraphicsCommandList8) ||
             riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
         {
+            auto &&hook_manager = gfxshim::D3D12HookManager::GetInstance();
             auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
-            auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().
+            auto *wrapped_command_list = hook_manager.
                                     ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator));
-            *ppCommandList = reinterpret_cast<ID3D12GraphicsCommandList *>(wrapped_command_list);
+            *ppCommandList = wrapped_command_list;
+            hook_manager.RegisterCommandListTracer(real_command_list);
             D3D12_WRAPPER_DEBUG("Wrapped command list pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
         }
     } else
@@ -565,7 +566,12 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateRootSignature(UINT nodeMask
                                                 SIZE_T blobLengthInBytes, const IID &riid, void **ppvRootSignature)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, ppvRootSignature);
+    auto result =  m_pDevice->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, ppvRootSignature);
+    if (pBlobWithRootSignature != nullptr && ppvRootSignature != nullptr && (*ppvRootSignature) != nullptr)
+    {
+        gfxshim::D3D12HookManager::GetInstance().UpdateBlobToRootSignatureMapping(reinterpret_cast<uint64_t>(pBlobWithRootSignature), reinterpret_cast<ID3D12RootSignature *>(*ppvRootSignature));
+    }
+    return result;
 }
 
 void STDMETHODCALLTYPE WrappedID3D12Device::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC *pDesc,
@@ -587,6 +593,11 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateUnorderedAccessView(ID3D12Reso
                                                 	D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
 {
     m_pDevice->CreateUnorderedAccessView(pResource, pCounterResource, pDesc, DestDescriptor);
+    if (pResource != nullptr && pDesc != nullptr)
+    {
+        gfxshim::D3D12HookManager::GetInstance().StoreUAVAndResource(DestDescriptor.ptr, pResource, pDesc);
+        D3D12_WRAPPER_DEBUG("Create unordered access view, resource: {}, uav: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+    }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12Device::CreateRenderTargetView(ID3D12Resource *pResource,
@@ -596,8 +607,12 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateRenderTargetView(ID3D12Resourc
     m_pDevice->CreateRenderTargetView(pResource, pDesc, DestDescriptor);
     if (pResource != nullptr && pDesc != nullptr)
     {
-        gfxshim::D3D12Tracer::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, pDesc);
+        gfxshim::D3D12HookManager::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, pDesc);
         D3D12_WRAPPER_DEBUG("Create render target view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+    } else if (pResource != nullptr && pDesc == nullptr)
+    {
+        gfxshim::D3D12HookManager::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, nullptr);
+        D3D12_WRAPPER_WARN("Create render target view while using null rtv desc");
     }
 }
 
@@ -608,7 +623,7 @@ void STDMETHODCALLTYPE WrappedID3D12Device::CreateDepthStencilView(ID3D12Resourc
     m_pDevice->CreateDepthStencilView(pResource, pDesc, DestDescriptor);
     if (pResource != nullptr && pDesc != nullptr)
     {
-        gfxshim::D3D12Tracer::GetInstance().StoreDSVAndResource(DestDescriptor.ptr, pResource, pDesc);
+        gfxshim::D3D12HookManager::GetInstance().StoreDSVAndResource(DestDescriptor.ptr, pResource, pDesc);
         D3D12_WRAPPER_DEBUG("Create depth stencil view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
     }
 }
@@ -840,8 +855,10 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList1(UINT nodeMask,
             riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7) || riid == __uuidof(ID3D12GraphicsCommandList8) ||
             riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
         {
+            auto &&hook_manager = gfxshim::D3D12HookManager::GetInstance();
             auto real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
-            auto *wrapped_command_list = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, nullptr);
+            auto *wrapped_command_list = hook_manager.ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, nullptr);
+            hook_manager.RegisterCommandListTracer(real_command_list);
             *ppCommandList = wrapped_command_list;
             D3D12_WRAPPER_DEBUG("Wrapped command list1 pointer: {}", reinterpret_cast<void *>(wrapped_command_list));
         }

@@ -1,7 +1,7 @@
 #include <d3d12/core/d3d12_command_queue_wrap.h>
 #include <d3d12/core/d3d12_command_list_wrap.h>
 #include <d3d12/core/d3d12_device_wrap.h>
-#include <d3d12/tracer/d3d12_tracer.h>
+#include <d3d12/tracer/d3d12_hook_manager.h>
 
 WrappedID3D12CommandQueue::WrappedID3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device)
 : m_pQueue(real_command_queue), m_wrapped_device(wrapped_device)
@@ -101,24 +101,23 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::CopyTileMappings(ID3D12Resourc
 
 void STDMETHODCALLTYPE WrappedID3D12CommandQueue::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList *const *ppCommandLists)
 {
-    // TODO: check
     D3D12_WRAPPER_ASSERT(NumCommandLists > 0, "The number of command lists should be greater than 0");
+    m_cur_command_lists.clear();
     std::vector<ID3D12CommandList *> real_command_lists;
     real_command_lists.reserve(NumCommandLists);
     for (uint32_t i = 0; i < NumCommandLists; ++i)
     {
         if (auto *wrapped_command_list = dynamic_cast<WrappedID3D12GraphicsCommandList *>(ppCommandLists[i]))
         {
-            real_command_lists.push_back(wrapped_command_list->GetReal());
+            auto *real_command_list = wrapped_command_list->GetReal();
+            real_command_lists.emplace_back(real_command_list);
+            m_cur_command_lists.emplace_back(real_command_list);
         } else
         {
-            real_command_lists.push_back(ppCommandLists[i]);
+            real_command_lists.emplace_back(ppCommandLists[i]);
         }
     }
     m_pQueue->ExecuteCommandLists(NumCommandLists, real_command_lists.data());
-
-    // TODO: test per-execution-dump
-    // gfxshim::D3D12Tracer::GetInstance().PerExecutionDump(this);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12CommandQueue::SetMarker(UINT Metadata, const void *pData, UINT Size)
@@ -139,7 +138,11 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::EndEvent()
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::Signal(ID3D12Fence *pFence, UINT64 Value)
 {
     auto result = m_pQueue->Signal(pFence, Value);
-    gfxshim::D3D12Tracer::GetInstance().PerDrawDump(pFence, Value);  // TODO: test deferred per-draw-dump and immediate dds-dumping or bin-dumping
+    if (!m_cur_command_lists.empty())
+    {
+        // TODO: test deferred per-draw-dump and deferred per-dispatch-dump and immediate dds-dumping or bin-dumping
+        gfxshim::D3D12HookManager::GetInstance().PerDrawAndDispatchDump(m_cur_command_lists, pFence, Value);
+    }
     return result;
 }
 

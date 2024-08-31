@@ -4,6 +4,8 @@
 
 #include <d3d12/common/d3d12_wrap_common.h>
 #include <d3d12/common/object_pool.h>
+#include <d3d12/tracer/d3d12_tracer.h>
+#include <span>
 
 class WrappedID3D12Device;
 class WrappedID3D12CommandQueue;
@@ -59,6 +61,8 @@ namespace gfxshim
 
         std::unique_ptr<ResourceManagerImpl> resource_manager_impl = nullptr;
         std::unordered_map<void *, WrappedResource> wrapped_resource_storage;
+        std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12Tracer>> command_list_tracer_storage{};
+        D3D12DeviceTracer device_tracer{};
         HMODULE d3d12_module = nullptr;
         D3D12DispatchTable dispatch_table{};
 
@@ -88,6 +92,62 @@ namespace gfxshim
         // Destroy resource with type
         void DestroyResource(const WrappedResource &wrapped_resource);
 
+        // Register command list tracer
+        void RegisterCommandListTracer(ID3D12GraphicsCommandList *command_list_pointer);
+
+        // Store render target view resource during creation
+        void StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc);
+
+        // Store depth stencil view resource during creation
+        void StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc);
+
+        // Store unordered access view resource during creation
+        void StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc);
+
+        // Store blob pointer to root signature mapping
+        void UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature = nullptr);
+
+        // Store blob pointer to root signature description mapping, parse root uav and root table
+        void StoreBlobToRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_ROOT_SIGNATURE_DESC *root_signature_desc);
+
+        // Store blob pointer to versioned root signature description mapping, parse root uav and root table
+        void StoreBlobToVersionedRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *versioned_root_signature_desc);
+
+        // Get D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV descriptor size
+        void SetDescriptorSize(ID3D12Device *device);
+
+    public:
+        // Update render target view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
+        void UpdateRTVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t rtv_descriptor);
+
+        // Update depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
+        void UpdateDSVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t dsv_descriptor);
+
+        // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
+        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t uav_descriptor);
+
+        // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
+        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint32_t root_parameter_index, uint64_t uav_descriptor);
+
+        // Deferred per-draw-dump by recording copy command of read back resource
+        void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
+
+        // Deferred per-dispatch-dump by recording copy command of read back resource
+        void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
+
+        // Record descriptor heaps during invoking ID3D12GraphicsCommandList::SetDescriptorHeaps
+        void ResetDescriptorHeaps(ID3D12GraphicsCommandList *command_list_pointer, uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_pointer);
+
+        // Record compute pipeline root signature during invoking ID3D12GraphicsCommandList::SetComputeRootSignature
+        void ResetComputePipelineRootSignature(ID3D12GraphicsCommandList *command_list_pointer, ID3D12RootSignature *compute_root_signature);
+
+        /*
+         * Deferred per-draw-dump after command queue signal, immediately dump into dds or binary file;
+         * deferred per-dispatch-dump after command queue signal, immediately dump into dds or binary file
+         */
+        void PerDrawAndDispatchDump(std::span<ID3D12GraphicsCommandList *> graphics_command_list_pointers, ID3D12Fence *fence, uint64_t fence_value);
+
+    public:
         // Wrap exported d3d12 functions
         HRESULT WINAPI D3D12GetDebugInterface(_In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug);
 

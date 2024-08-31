@@ -28,6 +28,7 @@ class WrappedID3D12CommandQueue : public ID3D12CommandQueue
 private:
     ID3D12CommandQueue *m_pQueue = nullptr;
     WrappedID3D12Device *m_wrapped_device = nullptr;
+    std::vector<ID3D12GraphicsCommandList *> m_cur_command_lists = {};
 
 public:
     WrappedID3D12CommandQueue(ID3D12CommandQueue *real_command_queue, WrappedID3D12Device *wrapped_device);
