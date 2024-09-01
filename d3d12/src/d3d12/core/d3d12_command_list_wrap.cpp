@@ -768,10 +768,10 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetRenderTargets(UINT
         {
             gfxshim::D3D12HookManager::GetInstance().UpdateRTVStatePerDraw(m_pList, pRenderTargetDescriptors[i].ptr);  // TODO: test deferred per-draw-dump
         }
-        if (pDepthStencilDescriptor != nullptr)
-        {
-            gfxshim::D3D12HookManager::GetInstance().UpdateDSVStatePerDraw(m_pList, pDepthStencilDescriptor->ptr);
-        }
+    }
+    if (pDepthStencilDescriptor != nullptr)
+    {
+        gfxshim::D3D12HookManager::GetInstance().UpdateDSVStatePerDraw(m_pList, pDepthStencilDescriptor->ptr);
     }
 }
 

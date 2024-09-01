@@ -102,7 +102,11 @@ void STDMETHODCALLTYPE WrappedID3D12CommandQueue::CopyTileMappings(ID3D12Resourc
 void STDMETHODCALLTYPE WrappedID3D12CommandQueue::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList *const *ppCommandLists)
 {
     D3D12_WRAPPER_ASSERT(NumCommandLists > 0, "The number of command lists should be greater than 0");
-    m_cur_command_lists.clear();
+    if (m_signal_queue_finish)
+    {
+        m_cur_command_lists.clear();
+        m_signal_queue_finish = false;
+    }
     std::vector<ID3D12CommandList *> real_command_lists;
     real_command_lists.reserve(NumCommandLists);
     for (uint32_t i = 0; i < NumCommandLists; ++i)
@@ -142,6 +146,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::Signal(ID3D12Fence *pFence,
     {
         // TODO: test deferred per-draw-dump and deferred per-dispatch-dump and immediate dds-dumping or bin-dumping
         gfxshim::D3D12HookManager::GetInstance().PerDrawAndDispatchDump(m_cur_command_lists, pFence, Value);
+        m_signal_queue_finish = true;
     }
     return result;
 }

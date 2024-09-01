@@ -61,7 +61,7 @@ namespace gfxshim
 
         std::unique_ptr<ResourceManagerImpl> resource_manager_impl = nullptr;
         std::unordered_map<void *, WrappedResource> wrapped_resource_storage;
-        std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12Tracer>> command_list_tracer_storage{};
+        std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12CommandListTracer>> command_list_tracer_storage{};
         D3D12DeviceTracer device_tracer{};
         HMODULE d3d12_module = nullptr;
         D3D12DispatchTable dispatch_table{};

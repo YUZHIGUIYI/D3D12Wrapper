@@ -98,6 +98,7 @@ namespace gfxshim
 
     void D3D12DeviceTracer::StoreRTVAndResource(uint64_t rtv_descriptor, ID3D12Resource *resource, const D3D12_RENDER_TARGET_VIEW_DESC *render_target_view_desc)
     {
+        std::lock_guard guard{ lock_mutex };
         D3D12_RENDER_TARGET_VIEW_DESC valid_rtv_desc{};
         if (render_target_view_desc == nullptr)
         {
@@ -136,16 +137,19 @@ namespace gfxshim
 
     void D3D12DeviceTracer::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)
     {
+        std::lock_guard guard{ lock_mutex };
         depth_stencil_view_info_storage[dsv_descriptor] = DepthStencilViewInfo{ resource, D3D12_RESOURCE_STATE_DEPTH_WRITE };
     }
 
     void D3D12DeviceTracer::StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc)
     {
+        std::lock_guard guard{ lock_mutex };
         unordered_access_view_info_storage[uav_descriptor] = UnorderedAccessViewInfo{ resource, *unordered_access_view_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
     }
 
     void D3D12DeviceTracer::UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature)
     {
+        std::lock_guard guard{ lock_mutex };
         if (blob_pointer == 0)
         {
             return;
@@ -163,6 +167,7 @@ namespace gfxshim
 
     void D3D12DeviceTracer::StoreBlobToRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_ROOT_SIGNATURE_DESC *root_signature_desc)
     {
+        std::lock_guard guard{ lock_mutex };
         if (root_signature_desc == nullptr)
         {
             return;
@@ -196,6 +201,7 @@ namespace gfxshim
 
     void D3D12DeviceTracer::StoreBlobToVersionedRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *versioned_root_signature_desc)
     {
+        std::lock_guard guard{ lock_mutex };
         if (versioned_root_signature_desc == nullptr)
         {
             return;
@@ -233,10 +239,103 @@ namespace gfxshim
 
     void D3D12DeviceTracer::SetDescriptorSize(ID3D12Device *device)
     {
+        std::lock_guard guard{ lock_mutex };
         srv_uav_descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 
-    D3D12Tracer::DumpDecoration::DumpDecoration(gfxshim::D3D12Tracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
+    RootSignatureIndex D3D12DeviceTracer::QueryComputeRootSignature(ID3D12RootSignature *compute_root_signature)
+    {
+        std::lock_guard guard{ lock_mutex };
+        if (root_signature_pointer_to_blob_mapping.contains(compute_root_signature))
+        {
+            auto blob_pointer = root_signature_pointer_to_blob_mapping[compute_root_signature];
+            return RootSignatureIndex{ blob_pointer, compute_root_signature };
+        }
+        return RootSignatureIndex{ 0, compute_root_signature };
+    }
+
+    void D3D12DeviceTracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor, std::unordered_map<uint64_t, RenderTargetViewInfo> &render_target_view_info_per_draw)
+    {
+        std::lock_guard guard{ lock_mutex };
+        ID3D12Resource *resource = nullptr;
+        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
+        bool is_cube_map = false;
+        if (render_target_view_info_storage.contains(rtv_descriptor))
+        {
+            auto &&rtv_state = render_target_view_info_storage[rtv_descriptor];
+            resource = rtv_state.d3d12_resource;
+            rtv_desc = rtv_state.rtv_desc;
+            is_cube_map = rtv_state.cube_map;
+        }
+        render_target_view_info_per_draw[rtv_descriptor] = RenderTargetViewInfo{ resource, rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map };
+    }
+
+    void D3D12DeviceTracer::UpdateDSVStatePerDraw(uint64_t dsv_descriptor, std::unordered_map<uint64_t, DepthStencilViewInfo> &depth_stencil_view_info_per_draw)
+    {
+        std::lock_guard guard{ lock_mutex };
+        ID3D12Resource *resource = nullptr;
+        if (depth_stencil_view_info_storage.contains(dsv_descriptor))
+        {
+            auto &&dsv_state = depth_stencil_view_info_storage[dsv_descriptor];
+            resource = dsv_state.d3d12_resource;
+        }
+        depth_stencil_view_info_per_draw[dsv_descriptor] = DepthStencilViewInfo{ resource, D3D12_RESOURCE_STATE_DEPTH_WRITE };
+    }
+
+    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch)
+    {
+        std::lock_guard guard{ lock_mutex };
+        if (unordered_access_view_info_storage.contains(uav_descriptor))
+        {
+            unordered_access_view_info_per_dispatch[uav_descriptor] = unordered_access_view_info_storage[uav_descriptor];
+        }
+    }
+
+    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor, uint64_t cur_blob_pointer,
+                                                        std::vector<ID3D12DescriptorHeap *> &cur_descriptor_heaps,
+                                                        std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch)
+    {
+        std::lock_guard guard{ lock_mutex };
+        auto &&cur_compute_root_signature_info = blob_to_root_signature_info_mapping[cur_blob_pointer];
+        if (!cur_compute_root_signature_info.index_to_descriptor_ranges_mapping.contains(root_parameter_index))
+        {
+            return;
+        }
+        auto &&descriptor_ranges = cur_compute_root_signature_info.index_to_descriptor_ranges_mapping[root_parameter_index];
+        for (auto &&descriptor_range : descriptor_ranges)
+        {
+            if (descriptor_range.RangeType != D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
+            {
+                continue;
+            }
+
+            uint64_t real_cpu_descriptor = uav_descriptor;
+            for (auto&& descriptor_heap : cur_descriptor_heaps)
+            {
+                auto heap_desc = descriptor_heap->GetDesc();
+                if (heap_desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+                {
+                    continue;
+                }
+                auto descriptors_num = heap_desc.NumDescriptors;
+                auto cpu_heap_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr;
+                auto gpu_heap_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr;
+                auto gpu_heap_end = gpu_heap_start + descriptors_num * srv_uav_descriptor_size;
+                if ((gpu_heap_start <= uav_descriptor) && (uav_descriptor <= gpu_heap_end))
+                {
+                    uint32_t offset_in_descriptors = (uav_descriptor - gpu_heap_start) / srv_uav_descriptor_size;
+                    real_cpu_descriptor = cpu_heap_start + offset_in_descriptors * srv_uav_descriptor_size;
+                }
+            }
+
+            if (unordered_access_view_info_storage.contains(real_cpu_descriptor))
+            {
+                unordered_access_view_info_per_dispatch[real_cpu_descriptor] = unordered_access_view_info_storage[real_cpu_descriptor];
+            }
+        }
+    }
+
+    D3D12CommandListTracer::DumpDecoration::DumpDecoration(gfxshim::D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
     {
         auto current_execution_count = in_tracer.CheckExecutionCount();
         decorated_string = in_tracer.per_draw_dump_prefix + std::to_wstring(current_execution_count);
@@ -252,19 +351,21 @@ namespace gfxshim
         }
     }
 
-    std::wstring &D3D12Tracer::DumpDecoration::operator()()
+    std::wstring &D3D12CommandListTracer::DumpDecoration::operator()()
     {
         return decorated_string;
     }
 
-    D3D12Tracer::D3D12Tracer(D3D12DeviceTracer &device_tracer_ref)
+    D3D12CommandListTracer::D3D12CommandListTracer(D3D12DeviceTracer &device_tracer_ref, uint32_t command_list_id)
     : device_tracer(device_tracer_ref)
     {
+        // Command list id + Execution count + Draw or dispatch action + Draw or dispatch count + Resource view type + Resource view number
+        per_draw_dump_prefix = L"CL_" + std::to_wstring(command_list_id) + L"_ExecuteCM_";
         fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         D3D12_WRAPPER_ASSERT(fence_event != nullptr, "Fence event can not be nullptr");
     }
 
-    D3D12Tracer::~D3D12Tracer()
+    D3D12CommandListTracer::~D3D12CommandListTracer()
     {
         if (fence_event != nullptr)
         {
@@ -272,39 +373,52 @@ namespace gfxshim
         }
     }
 
-    uint32_t D3D12Tracer::IncreaseExecutionCount()
+    uint32_t D3D12CommandListTracer::IncreaseExecutionCount()
     {
         return execution_count.fetch_add(1, std::memory_order_seq_cst);
     }
 
-    uint32_t D3D12Tracer::CheckExecutionCount() const
+    uint32_t D3D12CommandListTracer::CheckExecutionCount() const
     {
         return execution_count.load(std::memory_order_seq_cst);
     }
 
-    uint32_t D3D12Tracer::IncreaseDrawCount()
+    uint32_t D3D12CommandListTracer::IncreaseDrawCount()
     {
         return draw_count.fetch_add(1, std::memory_order_seq_cst);
     }
 
-    uint32_t D3D12Tracer::CheckDrawCount() const
+    uint32_t D3D12CommandListTracer::CheckDrawCount() const
     {
         return draw_count.load(std::memory_order_seq_cst);
     }
 
-    uint32_t D3D12Tracer::IncreaseDispatchCount()
+    uint32_t D3D12CommandListTracer::IncreaseDispatchCount()
     {
         return dispatch_count.fetch_add(1, std::memory_order_seq_cst);
     }
 
-    uint32_t D3D12Tracer::CheckDispatchCount() const
+    uint32_t D3D12CommandListTracer::CheckDispatchCount() const
     {
         return dispatch_count.load(std::memory_order_seq_cst);
     }
 
-    void D3D12Tracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    void D3D12CommandListTracer::SetDumpFinish()
     {
-        if (CheckDrawCount() > 180) return;  // TODO: test deferred per-draw-dump, limit to 180
+        dump_finish.store(true, std::memory_order_seq_cst);
+    }
+
+    bool D3D12CommandListTracer::CheckDumpFinish() const
+    {
+        return dump_finish.load(std::memory_order_seq_cst);
+    }
+
+    void D3D12CommandListTracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    {
+        if (CheckDrawCount() > draw_count_limit)
+        {
+            return;  // TODO: test deferred per-draw-dump, limit to 180
+        }
 
         D3D12_WRAPPER_DEBUG("Begin to deferred per-draw-dump");
 
@@ -363,9 +477,9 @@ namespace gfxshim
         D3D12_WRAPPER_DEBUG("End deferred per-draw-dump");
     }
 
-    void D3D12Tracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value)
+    void D3D12CommandListTracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value)
     {
-        if (CheckExecutionCount() > 10)
+        if (CheckExecutionCount() > execution_count_limit)
         {
             return;  // TODO: test deferred per-draw-dump, limit the number of executions
         }
@@ -386,14 +500,14 @@ namespace gfxshim
             {
                 DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_rtv_texture_filepath_storage[i].c_str());
             }
-            capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
         }
 
         for (size_t i = 0; i < capture_dsv_texture_desc_storage_per_execution.size(); ++i)
         {
             auto &&capture_texture_desc = capture_dsv_texture_desc_storage_per_execution[i];
             DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_dsv_texture_filepath_storage[i].c_str());
-            capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
         }
 
         capture_rtv_texture_desc_storage_per_execution.clear();
@@ -405,9 +519,9 @@ namespace gfxshim
         depth_stencil_view_info_per_draw.clear();
     }
 
-    void D3D12Tracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value)
+    void D3D12CommandListTracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value)
     {
-        if (CheckExecutionCount() > 10 || per_dispatch_dump_ready.load(std::memory_order_seq_cst))
+        if (CheckExecutionCount() > execution_count_limit || per_dispatch_dump_ready.load(std::memory_order_seq_cst))
         {
             return;  // TODO: test deferred per-dispatch-dump, limit the number of executions
         }
@@ -430,7 +544,7 @@ namespace gfxshim
             {
                 DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_uav_texture_filepath_storage[i].c_str());
             }
-            capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
         }
 
         capture_uav_texture_desc_storage_per_execution.clear();
@@ -440,17 +554,26 @@ namespace gfxshim
         per_dispatch_dump_ready.store(false, std::memory_order_seq_cst);
     }
 
-    void D3D12Tracer::Advance()
+    void D3D12CommandListTracer::Advance()
     {
-        IncreaseExecutionCount();
+        auto cur_execution_count = IncreaseExecutionCount();
+        if (cur_execution_count == execution_count_limit)
+        {
+            SetDumpFinish();
+        }
     }
 
-    void D3D12Tracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor)
+    void D3D12CommandListTracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
         if (per_draw_dump_ready.load(std::memory_order_seq_cst))
         {
             render_target_view_info_per_draw.clear();
             depth_stencil_view_info_per_draw.clear();
+            clear_rtv_dsv_finish = true;
             per_draw_dump_ready.store(false, std::memory_order_seq_cst);
         }
 
@@ -460,40 +583,42 @@ namespace gfxshim
             render_target_view_info_per_draw[rtv_descriptor].resource_state = D3D12_RESOURCE_STATE_RENDER_TARGET;
         } else
         {
-            ID3D12Resource *resource = nullptr;
-            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
-            bool is_cube_map = false;
-            if (device_tracer.render_target_view_info_storage.contains(rtv_descriptor))
-            {
-                auto &&rtv_state = device_tracer.render_target_view_info_storage[rtv_descriptor];
-                resource = rtv_state.d3d12_resource;
-                rtv_desc = rtv_state.rtv_desc;
-                is_cube_map = rtv_state.cube_map;
-            }
-            render_target_view_info_per_draw.try_emplace(rtv_descriptor, resource, rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map);
+            device_tracer.UpdateRTVStatePerDraw(rtv_descriptor, render_target_view_info_per_draw);
         }
     }
 
-    void D3D12Tracer::UpdateDSVStatePerDraw(uint64_t dsv_descriptor)
+    void D3D12CommandListTracer::UpdateDSVStatePerDraw(uint64_t dsv_descriptor)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
+        // OMSetRenderTargets use null rtv
+        if (!clear_rtv_dsv_finish && per_draw_dump_ready.load(std::memory_order_seq_cst))
+        {
+            render_target_view_info_per_draw.clear();
+            depth_stencil_view_info_per_draw.clear();
+            clear_rtv_dsv_finish = true;
+            per_draw_dump_ready.store(false, std::memory_order_seq_cst);
+        }
+
         // Depth stencil view
         if (depth_stencil_view_info_per_draw.contains(dsv_descriptor))
         {
             depth_stencil_view_info_per_draw[dsv_descriptor].resource_state = D3D12_RESOURCE_STATE_DEPTH_WRITE;  // TODO: check
         } else
         {
-            ID3D12Resource *resource = nullptr;
-            if (device_tracer.depth_stencil_view_info_storage.contains(dsv_descriptor))
-            {
-                auto &&dsv_state = device_tracer.depth_stencil_view_info_storage[dsv_descriptor];
-                resource = dsv_state.d3d12_resource;
-            }
-            depth_stencil_view_info_per_draw.try_emplace(dsv_descriptor, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            device_tracer.UpdateDSVStatePerDraw(dsv_descriptor, depth_stencil_view_info_per_draw);
         }
+        clear_rtv_dsv_finish = false;
     }
 
-    void D3D12Tracer::ResetDescriptorHeaps(uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_ptr)
+    void D3D12CommandListTracer::ResetDescriptorHeaps(uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_ptr)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
         cur_descriptor_heaps.clear();
         for (uint32_t i = 0; i < descriptor_heaps_num; ++i)
         {
@@ -501,83 +626,54 @@ namespace gfxshim
         }
     }
 
-    void D3D12Tracer::ResetComputePipelineRootSignature(ID3D12RootSignature *compute_root_signature)
+    void D3D12CommandListTracer::ResetComputePipelineRootSignature(ID3D12RootSignature *compute_root_signature)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
         // Clear unordered access view collection before SetComputeRootDescriptorTable or SetComputeRootUnorderedAccessView
         unordered_access_view_info_per_dispatch.clear();
         if (compute_root_signature)
         {
-            if (device_tracer.root_signature_pointer_to_blob_mapping.contains(compute_root_signature))
-            {
-                cur_compute_root_signature = compute_root_signature;
-                cur_blob_pointer = device_tracer.root_signature_pointer_to_blob_mapping[compute_root_signature];
-            }
+            auto root_signature_index = device_tracer.QueryComputeRootSignature(compute_root_signature);
+            cur_blob_pointer = root_signature_index.blob_pointer;
+            cur_compute_root_signature = root_signature_index.compute_root_signature;
         }
     }
 
-    void D3D12Tracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor)
+    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
         if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || cur_compute_root_signature == nullptr)
         {
             return;
         }
 
         // TODO: check
-        if (device_tracer.unordered_access_view_info_storage.contains(uav_descriptor))
-        {
-            unordered_access_view_info_per_dispatch[uav_descriptor] = device_tracer.unordered_access_view_info_storage[uav_descriptor];
-        }
+        device_tracer.UpdateUAVStatePerDispatch(uav_descriptor, unordered_access_view_info_per_dispatch);
     }
 
-    void D3D12Tracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor)
+    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor)
     {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
         if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || cur_compute_root_signature == nullptr)
         {
             return;
         }
 
-        auto &&cur_compute_root_signature_info = device_tracer.blob_to_root_signature_info_mapping[cur_blob_pointer];
-        if (!cur_compute_root_signature_info.index_to_descriptor_ranges_mapping.contains(root_parameter_index))
-        {
-            return;
-        }
-        auto &&descriptor_ranges = cur_compute_root_signature_info.index_to_descriptor_ranges_mapping[root_parameter_index];
-        for (auto &&descriptor_range : descriptor_ranges)
-        {
-            if (descriptor_range.RangeType != D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
-            {
-                continue;
-            }
-
-            uint64_t real_cpu_descriptor = uav_descriptor;
-            for (auto&& descriptor_heap : cur_descriptor_heaps)
-            {
-                auto heap_desc = descriptor_heap->GetDesc();
-                if (heap_desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
-                {
-                    continue;
-                }
-                auto descriptors_num = heap_desc.NumDescriptors;
-                auto cpu_heap_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr;
-                auto gpu_heap_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr;
-                auto gpu_heap_end = gpu_heap_start + descriptors_num * device_tracer.srv_uav_descriptor_size;
-                if ((gpu_heap_start <= uav_descriptor) && (uav_descriptor <= gpu_heap_end))
-                {
-                    uint32_t offset_in_descriptors = (uav_descriptor - gpu_heap_start) / device_tracer.srv_uav_descriptor_size;
-                    real_cpu_descriptor = cpu_heap_start + offset_in_descriptors * device_tracer.srv_uav_descriptor_size;
-                }
-            }
-
-            if (device_tracer.unordered_access_view_info_storage.contains(real_cpu_descriptor))
-            {
-                unordered_access_view_info_per_dispatch[real_cpu_descriptor] = device_tracer.unordered_access_view_info_storage[real_cpu_descriptor];
-            }
-        }
+        device_tracer.UpdateUAVStatePerDispatch(root_parameter_index, uav_descriptor, cur_blob_pointer, cur_descriptor_heaps, unordered_access_view_info_per_dispatch);
     }
 
-    void D3D12Tracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
     {
-        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > 10)
+        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > dispatch_count_limit)
         {
             return;
         }

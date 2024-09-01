@@ -81,9 +81,11 @@ namespace gfxshim
 
     void D3D12HookManager::RegisterCommandListTracer(ID3D12GraphicsCommandList *command_list_pointer)
     {
+        static uint32_t command_list_id = 0;
         if (!command_list_tracer_storage.contains(command_list_pointer))
         {
-            command_list_tracer_storage[command_list_pointer] = std::make_unique<D3D12Tracer>(device_tracer);
+            command_list_tracer_storage[command_list_pointer] = std::make_unique<D3D12CommandListTracer>(device_tracer, command_list_id);
+            ++command_list_id;
         }
     }
 
