@@ -107,10 +107,10 @@ namespace gfxshim
         void UpdateDSVStatePerDraw(uint64_t dsv_descriptor, std::unordered_map<uint64_t, DepthStencilViewInfo> &depth_stencil_view_info_per_draw);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
-        void UpdateUAVStatePerDispatch(uint64_t uav_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
+        void UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor, uint64_t cur_blob_pointer,
+        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor, uint64_t cur_blob_pointer,
                                         std::vector<ID3D12DescriptorHeap *> &cur_descriptor_heaps, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
     };
 
@@ -156,7 +156,6 @@ namespace gfxshim
         std::atomic<bool> per_draw_dump_ready{ false };
         std::atomic<bool> per_dispatch_dump_ready{ false };
         std::atomic<bool> dump_finish{ false };
-        bool clear_rtv_dsv_finish = false;
 
         enum class DecorationFlag : uint8_t
         {
@@ -194,6 +193,9 @@ namespace gfxshim
         // Deferred per-dispatch-dump after command queue signal, immediately dump into dds or binary file
         void PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value);
 
+        // Clear render target view and depth stencil view information, invoke before update rtv and dsv states
+        void ClearRTVAndDSVStatesPerDraw();
+
         // Update render target view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
         void UpdateRTVStatePerDraw(uint64_t rtv_descriptor);
 
@@ -207,10 +209,10 @@ namespace gfxshim
         void ResetComputePipelineRootSignature(ID3D12RootSignature *compute_root_signature);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
-        void UpdateUAVStatePerDispatch(uint64_t uav_descriptor);
+        void UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor);
+        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor);
 
         // Increase execution count
         void Advance();

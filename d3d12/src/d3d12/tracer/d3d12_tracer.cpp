@@ -282,16 +282,16 @@ namespace gfxshim
         depth_stencil_view_info_per_draw[dsv_descriptor] = DepthStencilViewInfo{ resource, D3D12_RESOURCE_STATE_DEPTH_WRITE };
     }
 
-    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch)
+    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch)
     {
         std::lock_guard guard{ lock_mutex };
-        if (unordered_access_view_info_storage.contains(uav_descriptor))
+        if (unordered_access_view_info_storage.contains(uav_gpu_descriptor))
         {
-            unordered_access_view_info_per_dispatch[uav_descriptor] = unordered_access_view_info_storage[uav_descriptor];
+            unordered_access_view_info_per_dispatch[uav_gpu_descriptor] = unordered_access_view_info_storage[uav_gpu_descriptor];
         }
     }
 
-    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor, uint64_t cur_blob_pointer,
+    void D3D12DeviceTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor, uint64_t cur_blob_pointer,
                                                         std::vector<ID3D12DescriptorHeap *> &cur_descriptor_heaps,
                                                         std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch)
     {
@@ -309,7 +309,7 @@ namespace gfxshim
                 continue;
             }
 
-            uint64_t real_cpu_descriptor = uav_descriptor;
+            std::vector<uint64_t> real_cpu_descriptors{};
             for (auto&& descriptor_heap : cur_descriptor_heaps)
             {
                 auto heap_desc = descriptor_heap->GetDesc();
@@ -317,21 +317,31 @@ namespace gfxshim
                 {
                     continue;
                 }
-                auto descriptors_num = heap_desc.NumDescriptors;
+                auto descriptors_num_in_range = descriptor_range.NumDescriptors;
+                auto descriptors_num_in_heap = heap_desc.NumDescriptors;
                 auto cpu_heap_start = descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr;
                 auto gpu_heap_start = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr;
-                auto gpu_heap_end = gpu_heap_start + descriptors_num * srv_uav_descriptor_size;
-                if ((gpu_heap_start <= uav_descriptor) && (uav_descriptor <= gpu_heap_end))
+                auto gpu_heap_end = gpu_heap_start + descriptors_num_in_heap * srv_uav_descriptor_size;
+                if ((gpu_heap_start <= uav_gpu_descriptor) && (uav_gpu_descriptor <= gpu_heap_end))
                 {
-                    uint32_t offset_in_descriptors = (uav_descriptor - gpu_heap_start) / srv_uav_descriptor_size;
-                    real_cpu_descriptor = cpu_heap_start + offset_in_descriptors * srv_uav_descriptor_size;
+                    uint32_t offset_from_start = (uav_gpu_descriptor - gpu_heap_start) / srv_uav_descriptor_size;
+                    uint32_t min_descriptors_num = std::min(descriptors_num_in_range, descriptors_num_in_heap);
+                    for (uint32_t descriptor_index = 0; descriptor_index < min_descriptors_num; ++descriptor_index)
+                    {
+                        uint64_t real_cpu_descriptor = cpu_heap_start + (offset_from_start + descriptor_index) * srv_uav_descriptor_size;
+                        real_cpu_descriptors.emplace_back(real_cpu_descriptor);
+                    }
                 }
             }
 
-            if (unordered_access_view_info_storage.contains(real_cpu_descriptor))
+            for (auto real_cpu_descriptor : real_cpu_descriptors)
             {
-                unordered_access_view_info_per_dispatch[real_cpu_descriptor] = unordered_access_view_info_storage[real_cpu_descriptor];
+                if (unordered_access_view_info_storage.contains(real_cpu_descriptor))
+                {
+                    unordered_access_view_info_per_dispatch[real_cpu_descriptor] = unordered_access_view_info_storage[real_cpu_descriptor];
+                }
             }
+
         }
     }
 
@@ -563,20 +573,22 @@ namespace gfxshim
         }
     }
 
+    void D3D12CommandListTracer::ClearRTVAndDSVStatesPerDraw()
+    {
+        if (per_draw_dump_ready.load(std::memory_order_seq_cst))
+        {
+            render_target_view_info_per_draw.clear();
+            depth_stencil_view_info_per_draw.clear();
+            per_draw_dump_ready.store(false, std::memory_order_seq_cst);
+        }
+    }
+
     void D3D12CommandListTracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor)
     {
         if (CheckDumpFinish())
         {
             return;
         }
-        if (per_draw_dump_ready.load(std::memory_order_seq_cst))
-        {
-            render_target_view_info_per_draw.clear();
-            depth_stencil_view_info_per_draw.clear();
-            clear_rtv_dsv_finish = true;
-            per_draw_dump_ready.store(false, std::memory_order_seq_cst);
-        }
-
         // Render target view
         if (render_target_view_info_per_draw.contains(rtv_descriptor))
         {
@@ -593,15 +605,6 @@ namespace gfxshim
         {
             return;
         }
-        // OMSetRenderTargets use null rtv
-        if (!clear_rtv_dsv_finish && per_draw_dump_ready.load(std::memory_order_seq_cst))
-        {
-            render_target_view_info_per_draw.clear();
-            depth_stencil_view_info_per_draw.clear();
-            clear_rtv_dsv_finish = true;
-            per_draw_dump_ready.store(false, std::memory_order_seq_cst);
-        }
-
         // Depth stencil view
         if (depth_stencil_view_info_per_draw.contains(dsv_descriptor))
         {
@@ -610,7 +613,6 @@ namespace gfxshim
         {
             device_tracer.UpdateDSVStatePerDraw(dsv_descriptor, depth_stencil_view_info_per_draw);
         }
-        clear_rtv_dsv_finish = false;
     }
 
     void D3D12CommandListTracer::ResetDescriptorHeaps(uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_ptr)
@@ -642,7 +644,7 @@ namespace gfxshim
         }
     }
 
-    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint64_t uav_descriptor)
+    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor)
     {
         if (CheckDumpFinish())
         {
@@ -654,10 +656,10 @@ namespace gfxshim
         }
 
         // TODO: check
-        device_tracer.UpdateUAVStatePerDispatch(uav_descriptor, unordered_access_view_info_per_dispatch);
+        device_tracer.UpdateUAVStatePerDispatch(uav_gpu_descriptor, unordered_access_view_info_per_dispatch);
     }
 
-    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_descriptor)
+    void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor)
     {
         if (CheckDumpFinish())
         {
@@ -668,7 +670,7 @@ namespace gfxshim
             return;
         }
 
-        device_tracer.UpdateUAVStatePerDispatch(root_parameter_index, uav_descriptor, cur_blob_pointer, cur_descriptor_heaps, unordered_access_view_info_per_dispatch);
+        device_tracer.UpdateUAVStatePerDispatch(root_parameter_index, uav_gpu_descriptor, cur_blob_pointer, cur_descriptor_heaps, unordered_access_view_info_per_dispatch);
     }
 
     void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)

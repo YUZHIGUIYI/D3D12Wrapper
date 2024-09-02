@@ -762,17 +762,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetRenderTargets(UINT
                                             const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor)
 {
     m_pList->OMSetRenderTargets(NumRenderTargetDescriptors, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
-    if (NumRenderTargetDescriptors > 0)
-    {
-        for (uint32_t i = 0; i < NumRenderTargetDescriptors; ++i)
-        {
-            gfxshim::D3D12HookManager::GetInstance().UpdateRTVStatePerDraw(m_pList, pRenderTargetDescriptors[i].ptr);  // TODO: test deferred per-draw-dump
-        }
-    }
-    if (pDepthStencilDescriptor != nullptr)
-    {
-        gfxshim::D3D12HookManager::GetInstance().UpdateDSVStatePerDraw(m_pList, pDepthStencilDescriptor->ptr);
-    }
+    gfxshim::D3D12HookManager::GetInstance().UpdateRTVAndDSVStatesPerDraw(m_pList, NumRenderTargetDescriptors, pRenderTargetDescriptors, pDepthStencilDescriptor);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ClearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView,

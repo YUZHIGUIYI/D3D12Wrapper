@@ -117,11 +117,8 @@ namespace gfxshim
         void SetDescriptorSize(ID3D12Device *device);
 
     public:
-        // Update render target view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
-        void UpdateRTVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t rtv_descriptor);
-
-        // Update depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
-        void UpdateDSVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t dsv_descriptor);
+        // Update render target view and depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
+        void UpdateRTVAndDSVStatesPerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint32_t render_target_descriptors_num, const D3D12_CPU_DESCRIPTOR_HANDLE *render_target_descriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *depth_stencil_descriptor);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
         void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t uav_descriptor);

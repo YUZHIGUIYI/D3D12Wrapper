@@ -124,19 +124,28 @@ namespace gfxshim
         device_tracer.SetDescriptorSize(device);
     }
 
-    void D3D12HookManager::UpdateRTVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t rtv_descriptor)
+    void D3D12HookManager::UpdateRTVAndDSVStatesPerDraw(ID3D12GraphicsCommandList *command_list_pointer,
+                                                        uint32_t render_target_descriptors_num,
+                                                        const D3D12_CPU_DESCRIPTOR_HANDLE *render_target_descriptors,
+                                                        const D3D12_CPU_DESCRIPTOR_HANDLE *depth_stencil_descriptor)
     {
-        if (command_list_tracer_storage.contains(command_list_pointer))
+        if (!command_list_tracer_storage.contains(command_list_pointer))
         {
-            command_list_tracer_storage[command_list_pointer]->UpdateRTVStatePerDraw(rtv_descriptor);
+            return;
         }
-    }
 
-    void D3D12HookManager::UpdateDSVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t dsv_descriptor)
-    {
-        if (command_list_tracer_storage.contains(command_list_pointer))
+        if (render_target_descriptors_num > 0 || depth_stencil_descriptor != nullptr)
         {
-            command_list_tracer_storage[command_list_pointer]->UpdateDSVStatePerDraw(dsv_descriptor);
+            auto &&command_list_tracer = command_list_tracer_storage[command_list_pointer];
+            command_list_tracer->ClearRTVAndDSVStatesPerDraw();
+            for (uint32_t i = 0; i < render_target_descriptors_num; ++i)
+            {
+                command_list_tracer->UpdateRTVStatePerDraw(render_target_descriptors[i].ptr);
+            }
+            if (depth_stencil_descriptor != nullptr)
+            {
+                command_list_tracer->UpdateDSVStatePerDraw(depth_stencil_descriptor->ptr);
+            }
         }
     }
 
