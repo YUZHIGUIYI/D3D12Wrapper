@@ -410,7 +410,8 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::QueryInterface(REFIID riid, void 
 {
     // TODO: check
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice->QueryInterface(riid, ppvObject);
+    auto result = m_pDevice->QueryInterface(riid, ppvObject);
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)
