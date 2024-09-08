@@ -6,7 +6,6 @@
 
 #include <directx/d3d12.h>
 #include <directx/d3dcommon.h>
-#include <guiddef.h>
 #include <windef.h>
 #include <dxgi.h>
 #include <atomic>

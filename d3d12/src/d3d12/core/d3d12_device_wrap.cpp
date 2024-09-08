@@ -374,6 +374,11 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
 
 WrappedID3D12Device::~WrappedID3D12Device() = default;
 
+ID3D12Device *WrappedID3D12Device::GetReal() const
+{
+    return m_pDevice;
+}
+
 HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
 {
     if (ppvDevice == nullptr)
@@ -1176,4 +1181,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateRootSignatureFromSubobjectI
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     return m_pDevice14->CreateRootSignatureFromSubobjectInLibrary(nodeMask, pLibraryBlob, blobLengthInBytes, subobjectName, riid, ppvRootSignature);
+}
+
+extern "C" __declspec(dllexport) HRESULT QueryRealDevice(IUnknown *wrapped_device_pointer, IUnknown **real_device_pointer)
+{
+    if (const auto *wrapped_device = dynamic_cast<WrappedID3D12Device *>(wrapped_device_pointer))
+    {
+        *real_device_pointer = wrapped_device->GetReal();
+        return S_OK;
+    }
+    return E_FAIL;
 }

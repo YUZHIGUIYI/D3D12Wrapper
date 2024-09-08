@@ -36,6 +36,8 @@ public:
 
     ~WrappedID3D12CommandQueue();
 
+    [[nodiscard]] ID3D12CommandQueue *GetReal() const;
+
 public:
     // Implement IUnknown
     ULONG STDMETHODCALLTYPE AddRef() final;

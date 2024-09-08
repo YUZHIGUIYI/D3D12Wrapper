@@ -246,6 +246,8 @@ public:
 
     ~WrappedID3D12Device();
 
+    [[nodiscard]] ID3D12Device *GetReal() const;
+
 public:
     // Helper for ID3D12DeviceChild implementation to use
     HRESULT GetDevice(REFIID riid, void **ppvDevice);

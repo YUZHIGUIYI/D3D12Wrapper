@@ -1,4 +1,5 @@
 LIBRARY d3d11_ms
+
 EXPORTS
 CreateDirect3D11DeviceFromDXGIDevice
 CreateDirect3D11SurfaceFromDXGISurface

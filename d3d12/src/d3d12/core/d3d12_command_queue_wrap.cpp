@@ -11,6 +11,11 @@ WrappedID3D12CommandQueue::WrappedID3D12CommandQueue(ID3D12CommandQueue *real_co
 
 WrappedID3D12CommandQueue::~WrappedID3D12CommandQueue() = default;
 
+ID3D12CommandQueue *WrappedID3D12CommandQueue::GetReal() const
+{
+    return m_pQueue;
+}
+
 ULONG STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::AddRef()
 {
     return m_pQueue->AddRef();
@@ -169,4 +174,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::GetClockCalibration(UINT64 
 D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE WrappedID3D12CommandQueue::GetDesc()
 {
     return m_pQueue->GetDesc();
+}
+
+extern "C" __declspec(dllexport) HRESULT QueryRealCommandQueue(IUnknown *wrapped_queue_pointer, IUnknown **real_command_queue_pointer)
+{
+    if (const auto *wrapped_command_queue = dynamic_cast<WrappedID3D12CommandQueue *>(wrapped_queue_pointer))
+    {
+        *real_command_queue_pointer = wrapped_command_queue->GetReal();
+        return S_OK;
+    }
+    return E_FAIL;
 }
