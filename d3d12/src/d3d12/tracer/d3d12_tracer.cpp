@@ -147,6 +147,23 @@ namespace gfxshim
         unordered_access_view_info_storage[uav_descriptor] = UnorderedAccessViewInfo{ resource, *unordered_access_view_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
     }
 
+    void D3D12DeviceTracer::StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc)
+    {
+        std::lock_guard guard{ lock_mutex };
+        const auto indirect_arguments_pointer = command_signature_desc->pArgumentDescs;
+        const auto indirect_arguments_num = command_signature_desc->NumArgumentDescs;
+        D3D12_INDIRECT_ARGUMENT_TYPE expected_indirect_type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+        for (uint32_t i = 0; i < indirect_arguments_num; ++i)
+        {
+            if (const auto indirect_type = indirect_arguments_pointer[i].Type;
+                indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED || indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH)
+            {
+                expected_indirect_type = indirect_type;
+            }
+        }
+        command_signature_info_storage[command_signature_pointer] = CommandSignatureInfo{ expected_indirect_type };
+    }
+
     void D3D12DeviceTracer::UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature)
     {
         std::lock_guard guard{ lock_mutex };
@@ -252,6 +269,16 @@ namespace gfxshim
             return RootSignatureIndex{ blob_pointer, compute_root_signature };
         }
         return RootSignatureIndex{ 0, compute_root_signature };
+    }
+
+    D3D12_INDIRECT_ARGUMENT_TYPE D3D12DeviceTracer::QueryIndirectArgumentType(uint64_t command_signature_pointer)
+    {
+        std::lock_guard guard{ lock_mutex };
+        if (command_signature_info_storage.contains(command_signature_pointer))
+        {
+            return command_signature_info_storage[command_signature_pointer].indirect_type;
+        }
+        return D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
     }
 
     void D3D12DeviceTracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor, std::unordered_map<uint64_t, RenderTargetViewInfo> &render_target_view_info_per_draw)
@@ -717,5 +744,15 @@ namespace gfxshim
 
         IncreaseDispatchCount();
         D3D12_WRAPPER_DEBUG("End deferred per-dispatch-dump");
+    }
+
+    void D3D12CommandListTracer::CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer)
+    {
+        // TODO: consider dispatch
+        D3D12_INDIRECT_ARGUMENT_TYPE indirect_type = device_tracer.QueryIndirectArgumentType(command_signature_pointer);
+        if (indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED)
+        {
+            CollectStagingResourcePerDraw(device, command_list_pointer);
+        }
     }
 }

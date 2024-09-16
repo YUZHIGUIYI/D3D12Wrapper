@@ -783,7 +783,12 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandSignature(const D3D1
                                                    const IID &riid, void **ppvCommandSignature)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice->CreateCommandSignature(pDesc, pRootSignature, riid, ppvCommandSignature);
+    const auto result = m_pDevice->CreateCommandSignature(pDesc, pRootSignature, riid, ppvCommandSignature);
+    if (pDesc != nullptr && ppvCommandSignature != nullptr && (*ppvCommandSignature) != nullptr)
+    {
+        gfxshim::D3D12HookManager::GetInstance().StoreCommandSignature(reinterpret_cast<uint64_t>(*ppvCommandSignature), pDesc);
+    }
+    return result;
 }
 
 void STDMETHODCALLTYPE WrappedID3D12Device::GetResourceTiling(ID3D12Resource *pTiledResource,

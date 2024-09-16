@@ -48,11 +48,11 @@ private:
 public:
     D3D11HookManager()
     {
-        ReloadD3D11Module();
-        ReloadD3D12ExportedFunctions();
+        LoadD3D11Module();
+        LoadD3D12ExportedFunctions();
     }
 
-    void ReloadD3D11Module()
+    void LoadD3D11Module()
     {
         if (d3d11_module != nullptr && d3d11on12_module != nullptr)
         {
@@ -84,7 +84,7 @@ public:
         d3d11_core_register_layers = reinterpret_cast<PFN_D3D11_CORE_REGISTER_LAYERS>(GetProcAddress(d3d11_module, "D3D11CoreRegisterLayers"));
     }
 
-    void ReloadD3D12ExportedFunctions()
+    void LoadD3D12ExportedFunctions()
     {
 #if defined(ENABLE_D3D12_WRAPPER)
         if (query_real_device != nullptr && query_real_command_queue != nullptr)
@@ -97,6 +97,21 @@ public:
             query_real_command_queue = reinterpret_cast<PFN_QUERY_REAL_COMMAND_QUEUE>(GetProcAddress(d3d12_module, "QueryRealCommandQueue"));
         }
 #endif
+    }
+
+    void LoadD3D11On12Module()
+    {
+        if (d3d11on12_module == nullptr)
+        {
+            char system_directory[MAX_PATH];
+            if (const uint32_t result = GetSystemDirectory(system_directory, MAX_PATH); result == 0)
+            {
+                return;
+            }
+
+            const std::string core_lib_directory{ system_directory };
+            d3d11on12_module = LoadLibraryA((core_lib_directory + "\\d3d11on12.dll").c_str());
+        }
     }
 
     ~D3D11HookManager()
@@ -206,6 +221,7 @@ HRESULT WINAPI D3D11On12CreateDevice(
 #if defined(ENABLE_D3D12_WRAPPER)
         if (pDevice != nullptr && ppCommandQueues != nullptr)
         {
+            s_d3d11_hook->LoadD3D11On12Module();
             IUnknown *real_device = nullptr;
             std::vector<IUnknown *> real_queues{};
             if (s_d3d11_hook->query_real_device != nullptr)
@@ -231,7 +247,6 @@ HRESULT WINAPI D3D11On12CreateDevice(
                                         ppImmediateContext, pChosenFeatureLevel);
             return result;
         }
-
     }
     return E_UNEXPECTED;
 }

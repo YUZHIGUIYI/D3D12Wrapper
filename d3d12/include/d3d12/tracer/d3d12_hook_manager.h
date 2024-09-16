@@ -1,6 +1,7 @@
 //
 // Created by ZZK on 2024/7/25.
 //
+#pragma once
 
 #include <d3d12/common/d3d12_wrap_common.h>
 #include <d3d12/common/object_pool.h>
@@ -104,6 +105,9 @@ namespace gfxshim
         // Store unordered access view resource during creation
         void StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc);
 
+        // Store command signature information during creation
+        void StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc);
+
         // Store blob pointer to root signature mapping
         void UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature = nullptr);
 
@@ -131,6 +135,9 @@ namespace gfxshim
 
         // Deferred per-dispatch-dump by recording copy command of read back resource
         void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
+
+        // Deferred per-execute-indirect-dump by recording copy command of read back resource
+        void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer);
 
         // Record descriptor heaps during invoking ID3D12GraphicsCommandList::SetDescriptorHeaps
         void ResetDescriptorHeaps(ID3D12GraphicsCommandList *command_list_pointer, uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_pointer);

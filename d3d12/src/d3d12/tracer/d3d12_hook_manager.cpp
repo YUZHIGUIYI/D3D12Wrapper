@@ -29,14 +29,14 @@ namespace gfxshim
             return;
         }
 
-        dispatch_table.D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(d3d12_module, "D3D12GetDebugInterface");
-        dispatch_table.D3D12GetInterface = (PFN_D3D12_GET_INTERFACE)GetProcAddress(d3d12_module, "D3D12GetInterface");
-        dispatch_table.D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(d3d12_module, "D3D12CreateDevice");
-        dispatch_table.D3D12SerializeRootSignature = (PFN_D3D12_SERIALIZE_ROOT_SIGNATURE)GetProcAddress(d3d12_module, "D3D12SerializeRootSignature");
-        dispatch_table.D3D12SerializeVersionedRootSignature = (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature");
-        dispatch_table.D3D12CreateRootSignatureDeserializer = (PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER)GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer");
-        dispatch_table.D3D12CreateVersionedRootSignatureDeserializer = (PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER)GetProcAddress(d3d12_module, "D3D12CreateVersionedRootSignatureDeserializer");
-        dispatch_table.D3D12EnableExperimentalFeatures = (D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES)GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures");
+        dispatch_table.D3D12GetDebugInterface = reinterpret_cast<PFN_D3D12_GET_DEBUG_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
+        dispatch_table.D3D12GetInterface = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetInterface"));
+        dispatch_table.D3D12CreateDevice = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        dispatch_table.D3D12SerializeRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeRootSignature"));
+        dispatch_table.D3D12SerializeVersionedRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature"));
+        dispatch_table.D3D12CreateRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer"));
+        dispatch_table.D3D12CreateVersionedRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateVersionedRootSignatureDeserializer"));
+        dispatch_table.D3D12EnableExperimentalFeatures = reinterpret_cast<D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures"));
 
         AllocConsole();
         freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
@@ -102,6 +102,11 @@ namespace gfxshim
     void D3D12HookManager::StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc)
     {
         device_tracer.StoreUAVAndResource(uav_descriptor, resource, unordered_access_view_desc);
+    }
+
+    void D3D12HookManager::StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc)
+    {
+        device_tracer.StoreCommandSignature(command_signature_pointer, command_signature_desc);
     }
 
     void D3D12HookManager::StoreBlobToRootSignatureDescMapping(uint64_t blob_pointer, const D3D12_ROOT_SIGNATURE_DESC *root_signature_desc)
@@ -178,6 +183,14 @@ namespace gfxshim
         if (command_list_tracer_storage.contains(command_list_pointer))
         {
             command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDispatch(device, command_list_pointer);
+        }
+    }
+
+    void D3D12HookManager::CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerIndirect(device, command_list_pointer, command_signature_pointer);
         }
     }
 

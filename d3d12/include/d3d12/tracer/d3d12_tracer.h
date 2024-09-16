@@ -53,6 +53,12 @@ namespace gfxshim
         ID3D12RootSignature *compute_root_signature = nullptr;
     };
 
+    // Command signature information, only concern about draw and dispatch
+    struct CommandSignatureInfo
+    {
+        D3D12_INDIRECT_ARGUMENT_TYPE indirect_type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+    };
+
     struct D3D12DeviceTracer
     {
     private:
@@ -69,6 +75,10 @@ namespace gfxshim
         std::unordered_map<uint64_t, DepthStencilViewInfo> depth_stencil_view_info_storage;
         // Unordered access view and its creation resource
         std::unordered_map<uint64_t, UnorderedAccessViewInfo> unordered_access_view_info_storage;
+
+        // Command signature pointer to its information
+        std::unordered_map<uint64_t, CommandSignatureInfo> command_signature_info_storage;
+
         // Mutex
         std::mutex lock_mutex;
 
@@ -85,6 +95,9 @@ namespace gfxshim
         // Store unordered access view resource during creation
         void StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc);
 
+        // Store command signature information during creation
+        void StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc);
+
         // Store blob pointer to root signature mapping
         void UpdateBlobToRootSignatureMapping(uint64_t blob_pointer, ID3D12RootSignature *root_signature = nullptr);
 
@@ -96,6 +109,9 @@ namespace gfxshim
 
         // Query compute blob and compute root signature
         RootSignatureIndex QueryComputeRootSignature(ID3D12RootSignature *compute_root_signature);
+
+        // Query indirect argument through command signature
+        D3D12_INDIRECT_ARGUMENT_TYPE QueryIndirectArgumentType(uint64_t command_signature_pointer);
 
         // Set descriptor size
         void SetDescriptorSize(ID3D12Device *device);
@@ -186,6 +202,9 @@ namespace gfxshim
 
         // Deferred per-dispatch-dump by recording copy command of read back resource
         void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList);
+
+        // Deferred per-execute-indirect-dump by recording copy command of read back resource
+        void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer);
 
         // Deferred per-draw-dump after command queue signal, immediately dump into dds or binary file
         void PerDrawDump(ID3D12Fence *fence, uint64_t fence_value);

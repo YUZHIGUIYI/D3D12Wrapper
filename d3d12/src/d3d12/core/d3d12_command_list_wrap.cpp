@@ -442,16 +442,16 @@ WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12Graphic
 {
     if (m_pList)
     {
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList1), (void **)&m_pList1);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList2), (void **)&m_pList2);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList3), (void **)&m_pList3);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList4), (void **)&m_pList4);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList5), (void **)&m_pList5);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList6), (void **)&m_pList6);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList7), (void **)&m_pList7);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList8), (void **)&m_pList8);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList9), (void **)&m_pList9);
-        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList10), (void **)&m_pList10);
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList1), reinterpret_cast<void **>(&m_pList1));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList2), reinterpret_cast<void **>(&m_pList2));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList3), reinterpret_cast<void **>(&m_pList3));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList4), reinterpret_cast<void **>(&m_pList4));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList5), reinterpret_cast<void **>(&m_pList5));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList6), reinterpret_cast<void **>(&m_pList6));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList7), reinterpret_cast<void **>(&m_pList7));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList8), reinterpret_cast<void **>(&m_pList8));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList9), reinterpret_cast<void **>(&m_pList9));
+        m_pList->QueryInterface(__uuidof(ID3D12GraphicsCommandList10), reinterpret_cast<void **>(&m_pList10));
 
         m_pList->AddRef();
     }
@@ -848,4 +848,5 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ExecuteIndirect(ID3D12C
                                 UINT64 CountBufferOffset)
 {
     m_pList->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer, ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+    gfxshim::D3D12HookManager::GetInstance().CollectStagingResourcePerIndirect(m_wrapped_device, m_pList, reinterpret_cast<uint64_t>(pCommandSignature));  // TODO: test deferred per-execute-indirect-dump
 }
