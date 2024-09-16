@@ -125,10 +125,10 @@ namespace gfxshim
         void UpdateRTVAndDSVStatesPerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint32_t render_target_descriptors_num, const D3D12_CPU_DESCRIPTOR_HANDLE *render_target_descriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *depth_stencil_descriptor);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
-        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t uav_descriptor);
+        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t starting_gpu_descriptor);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint32_t root_parameter_index, uint64_t uav_descriptor);
+        void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint32_t root_parameter_index, uint64_t starting_gpu_descriptor);
 
         // Deferred per-draw-dump by recording copy command of read back resource
         void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);

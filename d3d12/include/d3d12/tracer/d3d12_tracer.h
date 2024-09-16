@@ -110,6 +110,9 @@ namespace gfxshim
         // Query compute blob and compute root signature
         RootSignatureIndex QueryComputeRootSignature(ID3D12RootSignature *compute_root_signature);
 
+        // Query CBV_SRV_UAV descriptor size
+        [[nodiscard]] uint32_t QueryNonSamplerDescriptorSize() const;
+
         // Query indirect argument through command signature
         D3D12_INDIRECT_ARGUMENT_TYPE QueryIndirectArgumentType(uint64_t command_signature_pointer);
 
@@ -123,11 +126,11 @@ namespace gfxshim
         void UpdateDSVStatePerDraw(uint64_t dsv_descriptor, std::unordered_map<uint64_t, DepthStencilViewInfo> &depth_stencil_view_info_per_draw);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
-        void UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
+        void UpdateUAVStatePerDispatch(uint64_t starting_gpu_descriptor, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor, uint64_t cur_blob_pointer,
-                                        std::vector<ID3D12DescriptorHeap *> &cur_descriptor_heaps, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
+        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t starting_gpu_descriptor, uint64_t cur_blob_pointer,
+                                        ID3D12DescriptorHeap *cur_descriptor_heap, std::unordered_map<uint64_t, UnorderedAccessViewInfo> &unordered_access_view_info_per_dispatch);
     };
 
     struct D3D12CommandListTracer
@@ -228,10 +231,10 @@ namespace gfxshim
         void ResetComputePipelineRootSignature(ID3D12RootSignature *compute_root_signature);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
-        void UpdateUAVStatePerDispatch(uint64_t uav_gpu_descriptor);
+        void UpdateUAVStatePerDispatch(uint64_t starting_gpu_descriptor);
 
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t uav_gpu_descriptor);
+        void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t starting_gpu_descriptor);
 
         // Increase execution count
         void Advance();
