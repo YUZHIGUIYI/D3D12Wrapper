@@ -338,7 +338,7 @@ public:
 
     ~WrappedID3D12GraphicsCommandList();
 
-    ID3D12GraphicsCommandList *GetReal();
+    [[nodiscard]] ID3D12GraphicsCommandList *GetReal() const;
 
 public:
     // Implement IUnknown

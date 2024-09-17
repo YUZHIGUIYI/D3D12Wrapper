@@ -438,7 +438,7 @@ namespace gfxshim
 
 WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device,
                                                                     WrappedID3D12CommandAllocator *wrapped_command_allocator)
-: m_pList(real_command_list), m_wrapped_device(wrapped_device), m_wrapped_command_allocator(wrapped_command_allocator)
+: m_pList(real_command_list), m_wrapped_command_allocator(wrapped_command_allocator), m_wrapped_device(wrapped_device)
 {
     if (m_pList)
     {
@@ -459,7 +459,7 @@ WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12Graphic
 
 WrappedID3D12GraphicsCommandList::~WrappedID3D12GraphicsCommandList() = default;
 
-ID3D12GraphicsCommandList *WrappedID3D12GraphicsCommandList::GetReal()
+ID3D12GraphicsCommandList *WrappedID3D12GraphicsCommandList::GetReal() const
 {
     return m_pList;
 }

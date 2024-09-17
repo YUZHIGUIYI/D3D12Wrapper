@@ -771,6 +771,12 @@ namespace gfxshim
         if (indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED)
         {
             CollectStagingResourcePerDraw(device, command_list_pointer);
+        } else if (indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH)
+        {
+            CollectStagingResourcePerDispatch(device, command_list_pointer);
+        } else
+        {
+            D3D12_WRAPPER_WARN("Non draw or dispatch command signature");
         }
     }
 }

@@ -353,20 +353,20 @@ WrappedID3D12Device::WrappedID3D12Device(ID3D12Device *real_device)
 {
     if(m_pDevice)
     {
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device1), (void **)&m_pDevice1);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device2), (void **)&m_pDevice2);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device3), (void **)&m_pDevice3);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device4), (void **)&m_pDevice4);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device5), (void **)&m_pDevice5);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device6), (void **)&m_pDevice6);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device7), (void **)&m_pDevice7);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device8), (void **)&m_pDevice8);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device9), (void **)&m_pDevice9);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device10), (void **)&m_pDevice10);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device11), (void **)&m_pDevice11);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device12), (void **)&m_pDevice12);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device13), (void **)&m_pDevice13);
-        m_pDevice->QueryInterface(__uuidof(ID3D12Device14), (void **)&m_pDevice14);
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device1), reinterpret_cast<void **>(&m_pDevice1));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device2), reinterpret_cast<void **>(&m_pDevice2));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device3), reinterpret_cast<void **>(&m_pDevice3));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device4), reinterpret_cast<void **>(&m_pDevice4));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device5), reinterpret_cast<void **>(&m_pDevice5));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device6), reinterpret_cast<void **>(&m_pDevice6));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device7), reinterpret_cast<void **>(&m_pDevice7));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device8), reinterpret_cast<void **>(&m_pDevice8));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device9), reinterpret_cast<void **>(&m_pDevice9));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device10), reinterpret_cast<void **>(&m_pDevice10));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device11), reinterpret_cast<void **>(&m_pDevice11));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device12), reinterpret_cast<void **>(&m_pDevice12));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device13), reinterpret_cast<void **>(&m_pDevice13));
+        m_pDevice->QueryInterface(__uuidof(ID3D12Device14), reinterpret_cast<void **>(&m_pDevice14));
 
         m_pDevice->AddRef();
     }
