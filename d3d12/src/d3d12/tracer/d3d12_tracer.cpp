@@ -147,6 +147,13 @@ namespace gfxshim
         unordered_access_view_info_storage[uav_descriptor] = UnorderedAccessViewInfo{ resource, *unordered_access_view_desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
     }
 
+    void D3D12DeviceTracer::StoreRootBufferMapping(ID3D12Resource *buffer)
+    {
+        std::lock_guard guard{ lock_mutex };
+        const auto buffer_gpu_va = static_cast<uint64_t>(buffer->GetGPUVirtualAddress());
+        root_buffer_info_storage[buffer_gpu_va] = buffer;
+    }
+
     void D3D12DeviceTracer::StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc)
     {
         std::lock_guard guard{ lock_mutex };
@@ -286,6 +293,16 @@ namespace gfxshim
         return D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
     }
 
+    ID3D12Resource *D3D12DeviceTracer::QueryRootBuffer(uint64_t gpu_va)
+    {
+        std::lock_guard guard{ lock_mutex };
+        if (root_buffer_info_storage.contains(gpu_va))
+        {
+            return root_buffer_info_storage[gpu_va];
+        }
+        return nullptr;
+    }
+
     void D3D12DeviceTracer::UpdateRTVStatePerDraw(uint64_t rtv_descriptor, std::unordered_map<uint64_t, RenderTargetViewInfo> &render_target_view_info_per_draw)
     {
         std::lock_guard guard{ lock_mutex };
@@ -377,14 +394,14 @@ namespace gfxshim
         }
     }
 
-    D3D12CommandListTracer::DumpDecoration::DumpDecoration(gfxshim::D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
+    D3D12CommandListTracer::DumpDecoration::DumpDecoration(const gfxshim::D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
     {
         auto current_execution_count = in_tracer.CheckExecutionCount();
         decorated_string = in_tracer.per_draw_dump_prefix + std::to_wstring(current_execution_count);
-        if (dump_flag == DecorationFlag::Dump_RTV)
+        if (dump_flag == DecorationFlag::DumpRTV)
         {
             decorated_string += action_string + L"_RTV_";
-        } else if (dump_flag == DecorationFlag::Dump_DSV)
+        } else if (dump_flag == DecorationFlag::DumpDSV)
         {
             decorated_string += action_string + L"_DSV_";
         } else
@@ -467,8 +484,8 @@ namespace gfxshim
         uint32_t rtv_index = 0;
         uint32_t dsv_index = 0;
         std::wstring draw_action_string = L"_Draw_" + std::to_wstring(CheckDrawCount());
-        DumpDecoration dump_decoration_rtv{ *this, draw_action_string, DecorationFlag::Dump_RTV };
-        DumpDecoration dump_decoration_dsv{ *this, draw_action_string, DecorationFlag::Dump_DSV };
+        DumpDecoration dump_decoration_rtv{ *this, draw_action_string, DecorationFlag::DumpRTV };
+        DumpDecoration dump_decoration_dsv{ *this, draw_action_string, DecorationFlag::DumpDSV };
         per_draw_dump_ready.store(true, std::memory_order_seq_cst);
         for (auto &&render_target_state : render_target_view_info_per_draw)
         {
@@ -687,8 +704,11 @@ namespace gfxshim
             return;
         }
 
-        // TODO: implement
-        device_tracer.UpdateUAVStatePerDispatch(starting_gpu_descriptor, unordered_access_view_info_per_dispatch);
+        // TODO: check
+        if (auto *buffer = device_tracer.QueryRootBuffer(starting_gpu_descriptor); buffer != nullptr)
+        {
+            unordered_access_view_info_per_dispatch[starting_gpu_descriptor] = UnorderedAccessViewInfo{ buffer, D3D12_UNORDERED_ACCESS_VIEW_DESC{}, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
+        }
     }
 
     void D3D12CommandListTracer::UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t starting_gpu_descriptor)
@@ -729,7 +749,7 @@ namespace gfxshim
 
         uint32_t uav_index = 0;
         std::wstring dispatch_action_string = L"_Dispatch_" + std::to_wstring(dispatch_count.load(std::memory_order_seq_cst));
-        DumpDecoration dump_decoration_uav{ *this, dispatch_action_string, DecorationFlag::Dump_UAV };
+        DumpDecoration dump_decoration_uav{ *this, dispatch_action_string, DecorationFlag::DumpUAV };
         for (auto &&unordered_access_state : unordered_access_view_info_per_dispatch)
         {
             auto *target_resource = unordered_access_state.second.d3d12_resource;

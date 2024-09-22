@@ -79,6 +79,9 @@ namespace gfxshim
         // Command signature pointer to its information
         std::unordered_map<uint64_t, CommandSignatureInfo> command_signature_info_storage;
 
+        // Buffer GPU virtual address to its creation resource
+        std::unordered_map<uint64_t, ID3D12Resource *> root_buffer_info_storage;
+
         // Mutex
         std::mutex lock_mutex;
 
@@ -94,6 +97,9 @@ namespace gfxshim
 
         // Store unordered access view resource during creation
         void StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc);
+
+        // Store buffer gpu va to resource mapping
+        void StoreRootBufferMapping(ID3D12Resource *buffer);
 
         // Store command signature information during creation
         void StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc);
@@ -115,6 +121,9 @@ namespace gfxshim
 
         // Query indirect argument through command signature
         D3D12_INDIRECT_ARGUMENT_TYPE QueryIndirectArgumentType(uint64_t command_signature_pointer);
+
+        // Query root buffer via gpu virtual address
+        ID3D12Resource *QueryRootBuffer(uint64_t gpu_va);
 
         // Set descriptor size
         void SetDescriptorSize(ID3D12Device *device);
@@ -178,14 +187,14 @@ namespace gfxshim
 
         enum class DecorationFlag : uint8_t
         {
-            Dump_RTV,
-            Dump_DSV,
-            Dump_UAV,
+            DumpRTV,
+            DumpDSV,
+            DumpUAV,
         };
 
         struct DumpDecoration
         {
-            explicit DumpDecoration(D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag);
+            explicit DumpDecoration(const D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag);
             std::wstring &operator()();
             std::wstring decorated_string;
         };

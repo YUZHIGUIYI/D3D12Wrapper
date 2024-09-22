@@ -104,6 +104,11 @@ namespace gfxshim
         device_tracer.StoreUAVAndResource(uav_descriptor, resource, unordered_access_view_desc);
     }
 
+    void D3D12HookManager::StoreRootBufferMapping(ID3D12Resource *buffer)
+    {
+        device_tracer.StoreRootBufferMapping(buffer);
+    }
+
     void D3D12HookManager::StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc)
     {
         device_tracer.StoreCommandSignature(command_signature_pointer, command_signature_desc);

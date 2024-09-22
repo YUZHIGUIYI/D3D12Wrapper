@@ -682,6 +682,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource(const D3D
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
     HRESULT result =  m_pDevice->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                                 pOptimizedClearValue, riidResource, ppvResource);
+    if (pDesc != nullptr && ppvResource != nullptr && (*ppvResource) != nullptr)
+    {
+        if (pDesc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && (pDesc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0)
+        {
+            auto *buffer = static_cast<ID3D12Resource *>(*ppvResource);
+            gfxshim::D3D12HookManager::GetInstance().StoreRootBufferMapping(buffer);
+        }
+    }
     return result;
 }
 
@@ -895,9 +903,18 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommittedResource1(const D3
                                                     void **ppvResource)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pDevice4->CreateCommittedResource1(pHeapProperties, HeapFlags, pDesc, 
+    auto result = m_pDevice4->CreateCommittedResource1(pHeapProperties, HeapFlags, pDesc,
                                                 InitialResourceState, pOptimizedClearValue, pProtectedSession, 
                                                 riidResource, ppvResource);
+    if (pDesc != nullptr && ppvResource != nullptr && (*ppvResource) != nullptr)
+    {
+        if (pDesc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+        {
+            auto *buffer = static_cast<ID3D12Resource *>(*ppvResource);
+            gfxshim::D3D12HookManager::GetInstance().StoreRootBufferMapping(buffer);
+        }
+    }
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateHeap1(const D3D12_HEAP_DESC *pDesc,

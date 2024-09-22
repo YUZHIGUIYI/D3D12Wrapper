@@ -105,6 +105,9 @@ namespace gfxshim
         // Store unordered access view resource during creation
         void StoreUAVAndResource(uint64_t uav_descriptor, ID3D12Resource *resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *unordered_access_view_desc);
 
+        // Store buffer gpu va to resource mapping
+        void StoreRootBufferMapping(ID3D12Resource *buffer);
+
         // Store command signature information during creation
         void StoreCommandSignature(uint64_t command_signature_pointer, const D3D12_COMMAND_SIGNATURE_DESC *command_signature_desc);
 
