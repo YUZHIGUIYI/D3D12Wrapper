@@ -159,6 +159,14 @@ namespace gfxshim
         }
     }
 
+    void D3D12HookManager::UpdateUAVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t starting_gpu_descriptor)
+    {
+        if (command_list_tracer_storage.contains(command_list_pointer))
+        {
+            command_list_tracer_storage[command_list_pointer]->UpdateUAVStatePerDraw(starting_gpu_descriptor);
+        }
+    }
+
     void D3D12HookManager::UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t starting_gpu_descriptor)
     {
         if (command_list_tracer_storage.contains(command_list_pointer))

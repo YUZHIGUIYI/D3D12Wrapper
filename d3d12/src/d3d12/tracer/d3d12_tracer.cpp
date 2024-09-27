@@ -483,9 +483,11 @@ namespace gfxshim
 
         uint32_t rtv_index = 0;
         uint32_t dsv_index = 0;
+        uint32_t uav_index = 0;
         std::wstring draw_action_string = L"_Draw_" + std::to_wstring(CheckDrawCount());
         DumpDecoration dump_decoration_rtv{ *this, draw_action_string, DecorationFlag::DumpRTV };
         DumpDecoration dump_decoration_dsv{ *this, draw_action_string, DecorationFlag::DumpDSV };
+        DumpDecoration dump_decoration_uav{ *this, draw_action_string, DecorationFlag::DumpUAV };
         per_draw_dump_ready.store(true, std::memory_order_seq_cst);
         for (auto &&render_target_state : render_target_view_info_per_draw)
         {
@@ -503,7 +505,6 @@ namespace gfxshim
             {
                 render_target_filepath += L".bin";
                 DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc);
-
             } else
             {
                 render_target_filepath += L".dds";
@@ -529,6 +530,27 @@ namespace gfxshim
             capture_dsv_texture_filepath_storage.emplace_back(std::move(depth_stencil_filepath));
             capture_dsv_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
             ++dsv_index;
+        }
+
+        for (auto &&unordered_access_state : unordered_access_view_info_per_draw)
+        {
+            auto &&target_resource = unordered_access_state.second.d3d12_resource;
+            auto uav_resource_state = unordered_access_state.second.resource_state;
+            if (target_resource == nullptr)
+            {
+                continue;
+            }
+            auto resource_desc = target_resource->GetDesc();
+            DirectX::CaptureTextureDesc capture_texture_desc{};
+            std::wstring unordered_access_filepath = dump_decoration_uav.decorated_string + std::to_wstring(uav_index);
+            if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            {
+                unordered_access_filepath += L".bin";
+                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc, uav_resource_state, uav_resource_state);
+                capture_uav_texture_filepath_storage_draw.emplace_back(std::move(unordered_access_filepath));
+                capture_uav_texture_desc_storage_per_execution_draw.emplace_back(std::move(capture_texture_desc));
+                ++uav_index;
+            }
         }
 
         IncreaseDrawCount();
@@ -559,14 +581,18 @@ namespace gfxshim
             {
                 DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_rtv_texture_filepath_storage[i].c_str());
             }
-            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
         }
 
         for (size_t i = 0; i < capture_dsv_texture_desc_storage_per_execution.size(); ++i)
         {
             auto &&capture_texture_desc = capture_dsv_texture_desc_storage_per_execution[i];
             DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_dsv_texture_filepath_storage[i].c_str());
-            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
+        }
+
+        for (size_t i = 0; i < capture_uav_texture_desc_storage_per_execution_draw.size(); ++i)
+        {
+            auto &&capture_texture_desc = capture_uav_texture_desc_storage_per_execution_draw[i];
+            DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_uav_texture_filepath_storage_draw[i].c_str());
         }
 
         capture_rtv_texture_desc_storage_per_execution.clear();
@@ -576,6 +602,10 @@ namespace gfxshim
         capture_dsv_texture_desc_storage_per_execution.clear();
         capture_dsv_texture_filepath_storage.clear();
         depth_stencil_view_info_per_draw.clear();
+
+        capture_uav_texture_desc_storage_per_execution_draw.clear();
+        capture_uav_texture_filepath_storage_draw.clear();
+        unordered_access_view_info_per_draw.clear();
     }
 
     void D3D12CommandListTracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value)
@@ -603,7 +633,6 @@ namespace gfxshim
             {
                 DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_uav_texture_filepath_storage[i].c_str());
             }
-            // capture_texture_desc_old_storage.emplace_back(std::move(capture_texture_desc));
         }
 
         capture_uav_texture_desc_storage_per_execution.clear();
@@ -661,6 +690,26 @@ namespace gfxshim
         } else
         {
             device_tracer.UpdateDSVStatePerDraw(dsv_descriptor, depth_stencil_view_info_per_draw);
+        }
+    }
+
+    void D3D12CommandListTracer::UpdateUAVStatePerDraw(uint64_t uav_descriptor)
+    {
+        if (CheckDumpFinish())
+        {
+            return;
+        }
+        // Unordered access view
+        if (unordered_access_view_info_per_draw.contains(uav_descriptor))
+        {
+            unordered_access_view_info_per_draw[uav_descriptor].resource_state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        } else
+        {
+            // TODO: check
+            if (auto *buffer = device_tracer.QueryRootBuffer(uav_descriptor); buffer != nullptr)
+            {
+                unordered_access_view_info_per_draw[uav_descriptor] = UnorderedAccessViewInfo{ buffer, D3D12_UNORDERED_ACCESS_VIEW_DESC{}, D3D12_RESOURCE_STATE_UNORDERED_ACCESS };
+            }
         }
     }
 

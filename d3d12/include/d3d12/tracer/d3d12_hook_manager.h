@@ -127,6 +127,9 @@ namespace gfxshim
         // Update render target view and depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
         void UpdateRTVAndDSVStatesPerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint32_t render_target_descriptors_num, const D3D12_CPU_DESCRIPTOR_HANDLE *render_target_descriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *depth_stencil_descriptor);
 
+        // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetGraphicsRootUnorderedAccessView
+        void UpdateUAVStatePerDraw(ID3D12GraphicsCommandList *command_list_pointer, uint64_t starting_gpu_descriptor);
+
         // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetComputeRootUnorderedAccessView
         void UpdateUAVStatePerDispatch(ID3D12GraphicsCommandList *command_list_pointer, uint64_t starting_gpu_descriptor);
 

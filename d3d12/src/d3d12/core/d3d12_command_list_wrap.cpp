@@ -737,6 +737,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetGraphicsRootUnordere
                                                     D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
 {
     m_pList->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+    gfxshim::D3D12HookManager::GetInstance().UpdateUAVStatePerDraw(m_pList, BufferLocation);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::IASetIndexBuffer(const D3D12_INDEX_BUFFER_VIEW *pView)

@@ -154,11 +154,14 @@ namespace gfxshim
         // Per draw dump assets
         std::unordered_map<uint64_t, RenderTargetViewInfo> render_target_view_info_per_draw;
         std::unordered_map<uint64_t, DepthStencilViewInfo> depth_stencil_view_info_per_draw;
+        std::unordered_map<uint64_t, UnorderedAccessViewInfo> unordered_access_view_info_per_draw;
         std::vector<DirectX::CaptureTextureDesc> capture_rtv_texture_desc_storage_per_execution;
         std::vector<DirectX::CaptureTextureDesc> capture_dsv_texture_desc_storage_per_execution;
-        // std::vector<DirectX::CaptureTextureDesc> capture_texture_desc_old_storage;
+        std::vector<DirectX::CaptureTextureDesc> capture_uav_texture_desc_storage_per_execution_draw;
+
         std::vector<std::wstring> capture_rtv_texture_filepath_storage;
         std::vector<std::wstring> capture_dsv_texture_filepath_storage;
+        std::vector<std::wstring> capture_uav_texture_filepath_storage_draw;
 
         // Per dispatch dump assets
         std::unordered_map<uint64_t, UnorderedAccessViewInfo> unordered_access_view_info_per_dispatch;
@@ -232,6 +235,9 @@ namespace gfxshim
 
         // Update depth stencil view information during invoking ID3D12GraphicsCommandList::OMSetRenderTargets
         void UpdateDSVStatePerDraw(uint64_t dsv_descriptor);
+
+        // Update unordered access view information during invoking ID3D12GraphicsCommandList::SetGraphicsRootUnorderedAccessView
+        void UpdateUAVStatePerDraw(uint64_t uav_descriptor);
 
         // Record descriptor heaps during invoking ID3D12GraphicsCommandList::SetDescriptorHeaps
         void ResetDescriptorHeaps(uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_ptr);
