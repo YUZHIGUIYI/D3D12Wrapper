@@ -3,6 +3,7 @@
 //
 
 #include <d3d12/tracer/d3d12_tracer.h>
+#include <format>
 
 namespace gfxshim
 {
@@ -397,16 +398,16 @@ namespace gfxshim
     D3D12CommandListTracer::DumpDecoration::DumpDecoration(const gfxshim::D3D12CommandListTracer &in_tracer, const std::wstring &action_string, DecorationFlag dump_flag)
     {
         auto current_execution_count = in_tracer.CheckExecutionCount();
-        decorated_string = in_tracer.per_draw_dump_prefix + std::to_wstring(current_execution_count);
+        decorated_string = std::format(L"{}_{}", in_tracer.per_draw_dump_prefix, current_execution_count);
         if (dump_flag == DecorationFlag::DumpRTV)
         {
-            decorated_string += action_string + L"_RTV_";
+            decorated_string = std::format(L"{}_{}_RTV", decorated_string, action_string);
         } else if (dump_flag == DecorationFlag::DumpDSV)
         {
-            decorated_string += action_string + L"_DSV_";
+            decorated_string = std::format(L"{}_{}_DSV", decorated_string, action_string);
         } else
         {
-            decorated_string += action_string + L"_UAV_";
+            decorated_string = std::format(L"{}_{}_UAV", decorated_string, action_string);
         }
     }
 
@@ -419,7 +420,7 @@ namespace gfxshim
     : device_tracer(device_tracer_ref)
     {
         // Command list id + Execution count + Draw or dispatch action + Draw or dispatch count + Resource view type + Resource view number
-        per_draw_dump_prefix = L"CL_" + std::to_wstring(command_list_id) + L"_ExecuteCM_";
+        per_draw_dump_prefix = std::format(L"CL_{}_ExecuteCM", command_list_id);
         fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         D3D12_WRAPPER_ASSERT(fence_event != nullptr, "Fence event can not be nullptr");
     }
@@ -484,7 +485,7 @@ namespace gfxshim
         uint32_t rtv_index = 0;
         uint32_t dsv_index = 0;
         uint32_t uav_index = 0;
-        std::wstring draw_action_string = L"_Draw_" + std::to_wstring(CheckDrawCount());
+        std::wstring draw_action_string = std::format(L"Draw_{}", CheckDrawCount());
         DumpDecoration dump_decoration_rtv{ *this, draw_action_string, DecorationFlag::DumpRTV };
         DumpDecoration dump_decoration_dsv{ *this, draw_action_string, DecorationFlag::DumpDSV };
         DumpDecoration dump_decoration_uav{ *this, draw_action_string, DecorationFlag::DumpUAV };
@@ -500,17 +501,17 @@ namespace gfxshim
 
             auto resource_desc = target_resource->GetDesc();
             DirectX::CaptureTextureDesc capture_texture_desc{};
-            std::wstring render_target_filepath = dump_decoration_rtv.decorated_string + std::to_wstring(rtv_index);
             if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             {
-                render_target_filepath += L".bin";
+                std::wstring render_target_filepath = std::format(L"{}_{}.bin", dump_decoration_rtv.decorated_string, rtv_index);
                 DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc);
+                capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             } else
             {
-                render_target_filepath += L".dds";
+                std::wstring render_target_filepath = std::format(L"{}_{}.dds", dump_decoration_rtv.decorated_string, rtv_index);
                 DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, render_target_state.second.cube_map);
+                capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             }
-            capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             capture_rtv_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
             ++rtv_index;
         }
@@ -524,7 +525,7 @@ namespace gfxshim
             }
 
             DirectX::CaptureTextureDesc capture_texture_desc{};
-            std::wstring depth_stencil_filepath = dump_decoration_dsv.decorated_string + std::to_wstring(dsv_index) + L".bin";
+            std::wstring depth_stencil_filepath = std::format(L"{}_{}.bin", dump_decoration_dsv.decorated_string, dsv_index);
             DirectX::CaptureTextureDeferred(device, pCommandList, depth_stencil_info.d3d12_resource, capture_texture_desc, false, false,
                                             depth_stencil_info.resource_state, depth_stencil_info.resource_state);
             capture_dsv_texture_filepath_storage.emplace_back(std::move(depth_stencil_filepath));
@@ -541,11 +542,10 @@ namespace gfxshim
                 continue;
             }
             auto resource_desc = target_resource->GetDesc();
-            DirectX::CaptureTextureDesc capture_texture_desc{};
-            std::wstring unordered_access_filepath = dump_decoration_uav.decorated_string + std::to_wstring(uav_index);
             if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             {
-                unordered_access_filepath += L".bin";
+                DirectX::CaptureTextureDesc capture_texture_desc{};
+                std::wstring unordered_access_filepath = std::format(L"{}_{}.bin", dump_decoration_uav.decorated_string, uav_index);
                 DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc, uav_resource_state, uav_resource_state);
                 capture_uav_texture_filepath_storage_draw.emplace_back(std::move(unordered_access_filepath));
                 capture_uav_texture_desc_storage_per_execution_draw.emplace_back(std::move(capture_texture_desc));
@@ -797,7 +797,8 @@ namespace gfxshim
         D3D12_WRAPPER_DEBUG("Begin to deferred per-dispatch-dump");
 
         uint32_t uav_index = 0;
-        std::wstring dispatch_action_string = L"_Dispatch_" + std::to_wstring(dispatch_count.load(std::memory_order_seq_cst));
+        // std::wstring dispatch_action_string = L"_Dispatch_" + std::to_wstring(dispatch_count.load(std::memory_order_seq_cst));
+        std::wstring dispatch_action_string = std::format(L"Dispatch_{}", dispatch_count.load(std::memory_order_seq_cst));
         DumpDecoration dump_decoration_uav{ *this, dispatch_action_string, DecorationFlag::DumpUAV };
         for (auto &&unordered_access_state : unordered_access_view_info_per_dispatch)
         {
@@ -811,20 +812,23 @@ namespace gfxshim
 
             auto resource_desc = target_resource->GetDesc();
             DirectX::CaptureTextureDesc capture_texture_desc{};
-            std::wstring unordered_access_filepath = dump_decoration_uav.decorated_string + std::to_wstring(uav_index);
+            // std::wstring unordered_access_filepath = dump_decoration_uav.decorated_string + std::to_wstring(uav_index);
+
             if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             {
-                unordered_access_filepath += L".bin";
+                std::wstring unordered_access_filepath = std::format(L"{}_{}.bin", dump_decoration_uav.decorated_string, uav_index);
                 DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc,
                                                 resource_state, resource_state);
+                capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
             } else
             {
-                unordered_access_filepath += L".dds";
+                std::wstring unordered_access_filepath = std::format(L"{}_{}.dds", dump_decoration_uav.decorated_string, uav_index);
                 auto rtv_desc = TranslateUAVDescToRTVDesc(uav_desc);
                 DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, false,
                                                             resource_state, resource_state);
+                capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
             }
-            capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
+
             capture_uav_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
             ++uav_index;
         }
