@@ -28,11 +28,12 @@ ULONG STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::Release()
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::QueryInterface(REFIID riid, void **ppvObject)
 {
-    return m_pQueue->QueryInterface(riid, ppvObject);
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    const auto result = m_pQueue->QueryInterface(riid, ppvObject);
+    return result;
 }
 
-BOOL STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::AssertResourceState(ID3D12Resource *pResource, UINT Subresource,
-                                        UINT State)
+BOOL STDMETHODCALLTYPE WrappedID3D12DebugCommandQueue::AssertResourceState(ID3D12Resource *pResource, UINT Subresource, UINT State)
 {
     return m_pQueue->AssertResourceState(pResource, Subresource, State);
 }
@@ -49,7 +50,9 @@ ULONG STDMETHODCALLTYPE WrappedID3D12CommandQueue::Release()
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::QueryInterface(REFIID riid, void **ppvObject)
 {
-    return m_pQueue->QueryInterface(riid, ppvObject);
+    D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
+    const auto result = m_pQueue->QueryInterface(riid, ppvObject);
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandQueue::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)

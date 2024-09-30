@@ -17,9 +17,9 @@ private:
 public:
     WrappedID3D12CommandAllocator(ID3D12CommandAllocator *real_command_allocator, WrappedID3D12Device *wrapped_device);
 
-    ~WrappedID3D12CommandAllocator();
+    virtual ~WrappedID3D12CommandAllocator();
 
-    ID3D12CommandAllocator *GetReal();
+    [[nodiscard]] ID3D12CommandAllocator *GetReal() const;
 
     // Implement IUnknown
     ULONG STDMETHODCALLTYPE AddRef() final;

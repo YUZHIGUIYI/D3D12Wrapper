@@ -386,10 +386,10 @@ HRESULT WrappedID3D12Device::GetDevice(REFIID riid, void **ppvDevice)
         return E_INVALIDARG;
     }
 
-    if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device1) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) ||
-        riid == __uuidof(ID3D12Device4) || riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) ||
-        riid == __uuidof(ID3D12Device8) || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) ||
-        riid == __uuidof(ID3D12Device12) || riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
+    if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device1)  || riid == __uuidof(ID3D12Device2)  || riid == __uuidof(ID3D12Device3) ||
+       riid == __uuidof(ID3D12Device4)  || riid == __uuidof(ID3D12Device5)  || riid == __uuidof(ID3D12Device6)  || riid == __uuidof(ID3D12Device7) ||
+       riid == __uuidof(ID3D12Device8)  || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) ||
+       riid == __uuidof(ID3D12Device12) || riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
     {
         *ppvDevice = this;
         this->AddRef();
@@ -415,7 +415,15 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::QueryInterface(REFIID riid, void 
 {
     // TODO: check
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    auto result = m_pDevice->QueryInterface(riid, ppvObject);
+    const auto result = m_pDevice->QueryInterface(riid, ppvObject);
+    if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device1)  || riid == __uuidof(ID3D12Device2)  || riid == __uuidof(ID3D12Device3) ||
+       riid == __uuidof(ID3D12Device4)  || riid == __uuidof(ID3D12Device5)  || riid == __uuidof(ID3D12Device6)  || riid == __uuidof(ID3D12Device7) ||
+       riid == __uuidof(ID3D12Device8)  || riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11)||
+       riid == __uuidof(ID3D12Device12) || riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
+    {
+        *ppvObject = this;
+        this->AddRef();
+    }
     return result;
 }
 
@@ -486,7 +494,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandAllocator(D3D12_COMM
         D3D12_WRAPPER_DEBUG("Real command allocator pointer: {}", *ppCommandAllocator);
         if (riid == __uuidof(ID3D12CommandAllocator))
         {
-            auto *real_command_allocator = reinterpret_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
+            auto *real_command_allocator = static_cast<ID3D12CommandAllocator *>(*ppCommandAllocator);
             auto *wrapped_command_allocator = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandAllocator>(real_command_allocator, this);
             *ppCommandAllocator = wrapped_command_allocator;
             D3D12_WRAPPER_DEBUG("Wrapped command allocator pointer: {}", reinterpret_cast<void *>(wrapped_command_allocator));
@@ -537,7 +545,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList(UINT nodeMask, 
             riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
         {
             auto &&hook_manager = gfxshim::D3D12HookManager::GetInstance();
-            auto *real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
+            auto *real_command_list = static_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
             auto *wrapped_command_list = hook_manager.
                                     ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, dynamic_cast<WrappedID3D12CommandAllocator *>(pCommandAllocator));
             *ppCommandList = wrapped_command_list;
@@ -869,13 +877,13 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandList1(UINT nodeMask,
     if (SUCCEEDED(result) && ppCommandList != nullptr && (*ppCommandList != nullptr))
     {
         D3D12_WRAPPER_DEBUG("Real command list1 pointer: {}", *ppCommandList);
-        if (riid == __uuidof(ID3D12GraphicsCommandList) || riid == __uuidof(ID3D12GraphicsCommandList1) || riid == __uuidof(ID3D12GraphicsCommandList2) ||
-            riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4) || riid == __uuidof(ID3D12GraphicsCommandList5) ||
-            riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7) || riid == __uuidof(ID3D12GraphicsCommandList8) ||
-            riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
+        if (riid == __uuidof(ID3D12GraphicsCommandList)  || riid == __uuidof(ID3D12GraphicsCommandList1)  || riid == __uuidof(ID3D12GraphicsCommandList2) ||
+            riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4)  || riid == __uuidof(ID3D12GraphicsCommandList5) ||
+            riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7)  || riid == __uuidof(ID3D12GraphicsCommandList8) ||
+            riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10) || riid == __uuidof(ID3D12CommandList))
         {
             auto &&hook_manager = gfxshim::D3D12HookManager::GetInstance();
-            auto real_command_list = reinterpret_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
+            auto real_command_list = static_cast<ID3D12GraphicsCommandList *>(*ppCommandList);
             auto *wrapped_command_list = hook_manager.ConstructResource<WrappedID3D12GraphicsCommandList>(real_command_list, this, nullptr);
             hook_manager.RegisterCommandListTracer(real_command_list);
             *ppCommandList = wrapped_command_list;
@@ -1106,7 +1114,7 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12Device::CreateCommandQueue1(const D3D12_C
         D3D12_WRAPPER_DEBUG("Real command queue pointer: {}", *ppCommandQueue);
         if(riid == __uuidof(ID3D12CommandQueue))
         {
-            auto *real_queue = reinterpret_cast<ID3D12CommandQueue *>(*ppCommandQueue);
+            auto *real_queue = static_cast<ID3D12CommandQueue *>(*ppCommandQueue);
             auto *wrapped_command_queue = gfxshim::D3D12HookManager::GetInstance().ConstructResource<WrappedID3D12CommandQueue>(real_queue, this);
             *ppCommandQueue = wrapped_command_queue;
             D3D12_WRAPPER_DEBUG("Wrapped command queue pointer: {}", reinterpret_cast<void *>(wrapped_command_queue));

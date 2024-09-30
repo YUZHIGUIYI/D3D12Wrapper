@@ -13,7 +13,7 @@ WrappedID3D12CommandAllocator::WrappedID3D12CommandAllocator(ID3D12CommandAlloca
 
 WrappedID3D12CommandAllocator::~WrappedID3D12CommandAllocator() = default;
 
-ID3D12CommandAllocator *WrappedID3D12CommandAllocator::GetReal()
+ID3D12CommandAllocator *WrappedID3D12CommandAllocator::GetReal() const
 {
     return m_command_allocator;
 }
@@ -33,14 +33,15 @@ ULONG STDMETHODCALLTYPE WrappedID3D12CommandAllocator::Release()
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::QueryInterface(REFIID riid, void **ppvObject)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_command_allocator->QueryInterface(riid, ppvObject);
+    const auto result = m_command_allocator->QueryInterface(riid, ppvObject);
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)
 {
     // TODO: check
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    HRESULT result =  m_command_allocator->GetPrivateData(guid, pDataSize, pData);
+    const HRESULT result =  m_command_allocator->GetPrivateData(guid, pDataSize, pData);
     if (guid == __uuidof(ID3D12GraphicsCommandList))
     {
         D3D12_WRAPPER_DEBUG("Get command list");
@@ -63,14 +64,14 @@ HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::SetPrivateDataInterface
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::SetName(LPCWSTR Name)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    HRESULT result = m_command_allocator->SetName(Name);
+    const HRESULT result = m_command_allocator->SetName(Name);
     return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12CommandAllocator::GetDevice(REFIID riid, void** ppvDevice)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    HRESULT result = m_wrapped_device->GetDevice(riid, ppvDevice);
+    const HRESULT result = m_wrapped_device->GetDevice(riid, ppvDevice);
     return result;
 }
 

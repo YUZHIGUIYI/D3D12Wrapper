@@ -39,7 +39,7 @@ namespace gfxshim
         dispatch_table.D3D12EnableExperimentalFeatures = reinterpret_cast<D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures"));
 
         AllocConsole();
-        freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
+        freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
         D3D12_WRAPPER_DEBUG("Initialized D3D12 hook manager successfully");
     }
 
@@ -66,16 +66,16 @@ namespace gfxshim
     {
         if (wrapped_resource.resource_type == WrappedResourceType::Device)
         {
-            DestroyResource<WrappedID3D12Device>(reinterpret_cast<WrappedID3D12Device *>(wrapped_resource.raw_resource_ptr));
+            DestroyResource<WrappedID3D12Device>(static_cast<WrappedID3D12Device *>(wrapped_resource.raw_resource_ptr));
         } else if (wrapped_resource.resource_type == WrappedResourceType::CommandQueue)
         {
-            DestroyResource<WrappedID3D12CommandQueue>(reinterpret_cast<WrappedID3D12CommandQueue *>(wrapped_resource.raw_resource_ptr));
+            DestroyResource<WrappedID3D12CommandQueue>(static_cast<WrappedID3D12CommandQueue *>(wrapped_resource.raw_resource_ptr));
         } else if (wrapped_resource.resource_type == WrappedResourceType::CommandAllocator)
         {
-            DestroyResource<WrappedID3D12CommandAllocator>(reinterpret_cast<WrappedID3D12CommandAllocator *>(wrapped_resource.raw_resource_ptr));
+            DestroyResource<WrappedID3D12CommandAllocator>(static_cast<WrappedID3D12CommandAllocator *>(wrapped_resource.raw_resource_ptr));
         } else if (wrapped_resource.resource_type == WrappedResourceType::GraphicsCommandList)
         {
-            DestroyResource<WrappedID3D12GraphicsCommandList>(reinterpret_cast<WrappedID3D12GraphicsCommandList *>(wrapped_resource.raw_resource_ptr));
+            DestroyResource<WrappedID3D12GraphicsCommandList>(static_cast<WrappedID3D12GraphicsCommandList *>(wrapped_resource.raw_resource_ptr));
         }
     }
 
@@ -288,14 +288,12 @@ namespace gfxshim
 
         if(SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
         {
-            ID3D12Device *real_device = nullptr;
-
-            if(riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device) || riid == __uuidof(ID3D12Device2) || riid == __uuidof(ID3D12Device3) || riid == __uuidof(ID3D12Device4) ||
-                riid == __uuidof(ID3D12Device5) || riid == __uuidof(ID3D12Device6) || riid == __uuidof(ID3D12Device7) || riid == __uuidof(ID3D12Device8) ||
-                riid == __uuidof(ID3D12Device9) || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) || riid == __uuidof(ID3D12Device12) ||
-                riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
+            if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device2)  || riid == __uuidof(ID3D12Device3)  || riid == __uuidof(ID3D12Device4) ||
+               riid == __uuidof(ID3D12Device5)  || riid == __uuidof(ID3D12Device6)  || riid == __uuidof(ID3D12Device7)  || riid == __uuidof(ID3D12Device8) ||
+               riid == __uuidof(ID3D12Device9)  || riid == __uuidof(ID3D12Device10) || riid == __uuidof(ID3D12Device11) || riid == __uuidof(ID3D12Device12)||
+               riid == __uuidof(ID3D12Device13) || riid == __uuidof(ID3D12Device14))
             {
-                real_device = reinterpret_cast<ID3D12Device *>(*ppDevice);
+                auto *real_device = static_cast<ID3D12Device *>(*ppDevice);
                 auto *wrapped_device = ConstructResource<WrappedID3D12Device>(real_device);
                 SetDescriptorSize(real_device);
                 *ppDevice = wrapped_device;

@@ -477,7 +477,16 @@ ULONG STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::Release()
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::QueryInterface(REFIID riid, void **ppvObject)
 {
     D3D12_WRAPPER_DEBUG("Invoke {}", SHIM_FUNC_SIGNATURE);
-    return m_pList->QueryInterface(riid, ppvObject);
+    const auto result = m_pList->QueryInterface(riid, ppvObject);
+    if (riid == __uuidof(ID3D12CommandList)          || riid == __uuidof(ID3D12GraphicsCommandList)  || riid == __uuidof(ID3D12GraphicsCommandList1) ||
+        riid == __uuidof(ID3D12GraphicsCommandList2) || riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4) ||
+        riid == __uuidof(ID3D12GraphicsCommandList5) || riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7) ||
+        riid == __uuidof(ID3D12GraphicsCommandList8) || riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10))
+    {
+        *ppvObject = this;
+        this->AddRef();
+    }
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::GetPrivateData(REFGUID guid, UINT *pDataSize, void *pData)
