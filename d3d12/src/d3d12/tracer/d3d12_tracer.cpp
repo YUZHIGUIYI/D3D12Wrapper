@@ -473,8 +473,15 @@ namespace gfxshim
         return dump_finish.load(std::memory_order_seq_cst);
     }
 
-    void D3D12CommandListTracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    void D3D12CommandListTracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
     {
+        // Record bundle command list draw count
+        if (const auto command_list_type = command_list_pointer->GetType(); command_list_type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+        {
+            ++draw_count_in_bundle;
+            return;
+        }
+        // For direct command list
         if (CheckDrawCount() > draw_count_limit)
         {
             return;  // TODO: test deferred per-draw-dump, limit to 180
@@ -504,12 +511,12 @@ namespace gfxshim
             if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             {
                 std::wstring render_target_filepath = std::format(L"{}_{}.bin", dump_decoration_rtv.decorated_string, rtv_index);
-                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc);
+                DirectX::CaptureBufferDeferred(device, command_list_pointer, target_resource, capture_texture_desc);
                 capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             } else
             {
                 std::wstring render_target_filepath = std::format(L"{}_{}.dds", dump_decoration_rtv.decorated_string, rtv_index);
-                DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, render_target_state.second.cube_map);
+                DirectX::CaptureTextureSubresourceDeferred(device, command_list_pointer, target_resource, rtv_desc, capture_texture_desc, render_target_state.second.cube_map);
                 capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             }
             capture_rtv_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
@@ -526,7 +533,7 @@ namespace gfxshim
 
             DirectX::CaptureTextureDesc capture_texture_desc{};
             std::wstring depth_stencil_filepath = std::format(L"{}_{}.bin", dump_decoration_dsv.decorated_string, dsv_index);
-            DirectX::CaptureTextureDeferred(device, pCommandList, depth_stencil_info.d3d12_resource, capture_texture_desc, false, false,
+            DirectX::CaptureTextureDeferred(device, command_list_pointer, depth_stencil_info.d3d12_resource, capture_texture_desc, false, false,
                                             depth_stencil_info.resource_state, depth_stencil_info.resource_state);
             capture_dsv_texture_filepath_storage.emplace_back(std::move(depth_stencil_filepath));
             capture_dsv_texture_desc_storage_per_execution.emplace_back(std::move(capture_texture_desc));
@@ -546,7 +553,7 @@ namespace gfxshim
             {
                 DirectX::CaptureTextureDesc capture_texture_desc{};
                 std::wstring unordered_access_filepath = std::format(L"{}_{}.bin", dump_decoration_uav.decorated_string, uav_index);
-                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc, uav_resource_state, uav_resource_state);
+                DirectX::CaptureBufferDeferred(device, command_list_pointer, target_resource, capture_texture_desc, uav_resource_state, uav_resource_state);
                 capture_uav_texture_filepath_storage_draw.emplace_back(std::move(unordered_access_filepath));
                 capture_uav_texture_desc_storage_per_execution_draw.emplace_back(std::move(capture_texture_desc));
                 ++uav_index;
@@ -649,6 +656,16 @@ namespace gfxshim
         {
             SetDumpFinish();
         }
+    }
+
+    uint32_t D3D12CommandListTracer::QueryDrawCountInBundle() const
+    {
+        return draw_count_in_bundle;
+    }
+
+    uint32_t D3D12CommandListTracer::QueryDispatchCountInBundle() const
+    {
+        return dispatch_count_in_bundle;
     }
 
     void D3D12CommandListTracer::ClearRTVAndDSVStatesPerDraw()
@@ -787,8 +804,15 @@ namespace gfxshim
         device_tracer.UpdateUAVStatePerDispatch(root_parameter_index, starting_gpu_descriptor, cur_blob_pointer, cbv_srv_uav_descriptor_heap, unordered_access_view_info_per_dispatch);
     }
 
-    void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList)
+    void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
     {
+        // Record bundle command list dispatch count
+        if (const auto command_list_type = command_list_pointer->GetType(); command_list_type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+        {
+            ++dispatch_count_in_bundle;
+            return;
+        }
+        // For direct command list or compute command list
         if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > dispatch_count_limit)
         {
             return;
@@ -817,14 +841,14 @@ namespace gfxshim
             if (resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
             {
                 std::wstring unordered_access_filepath = std::format(L"{}_{}.bin", dump_decoration_uav.decorated_string, uav_index);
-                DirectX::CaptureBufferDeferred(device, pCommandList, target_resource, capture_texture_desc,
+                DirectX::CaptureBufferDeferred(device, command_list_pointer, target_resource, capture_texture_desc,
                                                 resource_state, resource_state);
                 capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
             } else
             {
                 std::wstring unordered_access_filepath = std::format(L"{}_{}.dds", dump_decoration_uav.decorated_string, uav_index);
                 auto rtv_desc = TranslateUAVDescToRTVDesc(uav_desc);
-                DirectX::CaptureTextureSubresourceDeferred(device, pCommandList, target_resource, rtv_desc, capture_texture_desc, false,
+                DirectX::CaptureTextureSubresourceDeferred(device, command_list_pointer, target_resource, rtv_desc, capture_texture_desc, false,
                                                             resource_state, resource_state);
                 capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
             }

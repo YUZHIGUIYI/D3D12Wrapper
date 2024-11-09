@@ -650,6 +650,7 @@ void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::ExecuteBundle(ID3D12Gra
         }
     }
     m_pList->ExecuteBundle(real_command_list);
+    gfxshim::D3D12HookManager::GetInstance().CollectStagingResourcePerBundle(m_wrapped_device, m_pList, real_command_list);
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetDescriptorHeaps(UINT NumDescriptorHeaps,

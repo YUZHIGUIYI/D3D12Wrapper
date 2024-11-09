@@ -61,7 +61,7 @@ namespace gfxshim
         };
 
         std::unique_ptr<ResourceManagerImpl> resource_manager_impl = nullptr;
-        std::unordered_map<void *, WrappedResource> wrapped_resource_storage;
+        std::unordered_map<void *, WrappedResource> wrapped_resource_storage{};
         std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12CommandListTracer>> command_list_tracer_storage{};
         D3D12DeviceTracer device_tracer{};
         HMODULE d3d12_module = nullptr;
@@ -144,6 +144,9 @@ namespace gfxshim
 
         // Deferred per-execute-indirect-dump by recording copy command of read back resource
         void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer);
+
+        // Deferred per-execute-bundle-dump by recording copy command of read back resource during invoking ID3D12GraphicsCommandList::ExecuteBundle
+        void CollectStagingResourcePerBundle(ID3D12Device *device, ID3D12GraphicsCommandList *direct_command_list_pointer, ID3D12GraphicsCommandList *bundle_command_list_pointer);
 
         // Record descriptor heaps during invoking ID3D12GraphicsCommandList::SetDescriptorHeaps
         void ResetDescriptorHeaps(ID3D12GraphicsCommandList *command_list_pointer, uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_pointer);

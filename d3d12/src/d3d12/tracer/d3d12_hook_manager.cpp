@@ -207,6 +207,24 @@ namespace gfxshim
         }
     }
 
+    void D3D12HookManager::CollectStagingResourcePerBundle(ID3D12Device *device, ID3D12GraphicsCommandList *direct_command_list_pointer, ID3D12GraphicsCommandList *bundle_command_list_pointer)
+    {
+        if (command_list_tracer_storage.contains(direct_command_list_pointer) && command_list_tracer_storage.contains(bundle_command_list_pointer))
+        {
+            auto &&direct_command_list_tracer = command_list_tracer_storage[direct_command_list_pointer];
+            auto &&bundle_command_list_tracer = command_list_tracer_storage[bundle_command_list_pointer];
+            if (const uint32_t draw_count_in_bundle = bundle_command_list_tracer->QueryDrawCountInBundle(); draw_count_in_bundle > 0U)
+            {
+                direct_command_list_tracer->CollectStagingResourcePerDraw(device, direct_command_list_pointer);
+            }
+            if (const uint32_t dispatch_count_in_bundle = bundle_command_list_tracer->QueryDispatchCountInBundle(); dispatch_count_in_bundle > 0U)
+            {
+                direct_command_list_tracer->CollectStagingResourcePerDispatch(device, direct_command_list_pointer);
+            }
+            // TODO: consider execute indirect
+        }
+    }
+
     void D3D12HookManager::ResetDescriptorHeaps(ID3D12GraphicsCommandList *command_list_pointer, uint32_t descriptor_heaps_num, ID3D12DescriptorHeap *const *descriptor_heaps_pointer)
     {
         if (command_list_tracer_storage.contains(command_list_pointer))

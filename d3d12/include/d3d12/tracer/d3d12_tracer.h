@@ -178,8 +178,13 @@ namespace gfxshim
 
         std::wstring per_draw_dump_prefix{};
         uint32_t execution_count_limit = 5;
+        // Limit draw and dispatch dump
         uint32_t draw_count_limit = 180;
         uint32_t dispatch_count_limit = 10;
+        // Used for bundle command list to stat the number of draw and dispatch
+        uint32_t draw_count_in_bundle = 0;
+        uint32_t dispatch_count_in_bundle = 0;
+        // Used for command list to stat the number of draw and dispatch and execution
         std::atomic<uint32_t> execution_count{ 0 };
         std::atomic<uint32_t> draw_count{ 0 };
         std::atomic<uint32_t> dispatch_count{ 0 };
@@ -213,10 +218,10 @@ namespace gfxshim
         D3D12CommandListTracer &operator=(D3D12CommandListTracer &&) = delete;
 
         // Deferred per-draw-dump by recording copy command of read back resource
-        void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList);
+        void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
 
         // Deferred per-dispatch-dump by recording copy command of read back resource
-        void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *pCommandList);
+        void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
 
         // Deferred per-execute-indirect-dump by recording copy command of read back resource
         void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer);
@@ -253,6 +258,12 @@ namespace gfxshim
 
         // Increase execution count
         void Advance();
+
+        // Query draw count in bundle command list
+        uint32_t QueryDrawCountInBundle() const;
+
+        // Query dispatch count in bundle command list
+        uint32_t QueryDispatchCountInBundle() const;
 
     private:
         uint32_t IncreaseExecutionCount();
