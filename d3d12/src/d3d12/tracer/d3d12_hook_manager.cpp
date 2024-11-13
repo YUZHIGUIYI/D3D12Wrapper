@@ -14,29 +14,40 @@ namespace gfxshim
     : resource_manager_impl(std::make_unique<ResourceManagerImpl>())
     {
         char system_directory[MAX_PATH];
-        uint32_t result = GetSystemDirectory(system_directory, MAX_PATH);
-        if (result == 0)
+        if (const uint32_t result = GetSystemDirectory(system_directory, MAX_PATH); result == 0)
         {
             D3D12_WRAPPER_ERROR("Failed to retrieve system directory");
             return;
         }
 
-        std::string core_lib_directory(system_directory);
+        std::string core_lib_directory{ system_directory };
         d3d12_module = LoadLibraryA((core_lib_directory + "\\d3d12.dll").c_str());
         if (d3d12_module == nullptr)
         {
-            D3D12_WRAPPER_ERROR("Failed to load d3d12.dll");
+            D3D12_WRAPPER_ERROR("Failed to load d3d12.dll from system path");
             return;
         }
 
-        dispatch_table.D3D12GetDebugInterface = reinterpret_cast<PFN_D3D12_GET_DEBUG_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
-        dispatch_table.D3D12GetInterface = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetInterface"));
-        dispatch_table.D3D12CreateDevice = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
-        dispatch_table.D3D12SerializeRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeRootSignature"));
-        dispatch_table.D3D12SerializeVersionedRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature"));
-        dispatch_table.D3D12CreateRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer"));
-        dispatch_table.D3D12CreateVersionedRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateVersionedRootSignatureDeserializer"));
-        dispatch_table.D3D12EnableExperimentalFeatures = reinterpret_cast<D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures"));
+        d3d12_dispatch_table.D3D12GetDebugInterface = reinterpret_cast<PFN_D3D12_GET_DEBUG_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
+        d3d12_dispatch_table.D3D12GetInterface = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetInterface"));
+        d3d12_dispatch_table.D3D12CreateDevice = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
+        d3d12_dispatch_table.D3D12SerializeRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeRootSignature"));
+        d3d12_dispatch_table.D3D12SerializeVersionedRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature"));
+        d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer"));
+        d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateVersionedRootSignatureDeserializer"));
+        d3d12_dispatch_table.D3D12EnableExperimentalFeatures = reinterpret_cast<D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures"));
+
+        dxgi_module = LoadLibraryA((core_lib_directory + "\\dxgi.dll").c_str());
+        if (dxgi_module == nullptr)
+        {
+            D3D12_WRAPPER_ERROR("Failed to load dxgi.dll from system path");
+            return;
+        }
+        dxgi_dispatch_table.DXGICreateFactory = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
+        dxgi_dispatch_table.DXGICreateFactory1 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY1>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
+        dxgi_dispatch_table.DXGICreateFactory2 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY2>(GetProcAddress(dxgi_module, "CreateDXGIFactory2"));
+        dxgi_dispatch_table.DXGIGetDebugInterface1 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_GET_DEBUG_INTERFACE1>(GetProcAddress(dxgi_module, "DXGIGetDebugInterface1"));
+        dxgi_dispatch_table.DXGIDeclareAdapterRemovalSupport = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_DECLARE_ADAPTER_REMOVAL_SUPPORT>(GetProcAddress(dxgi_module, "DXGIDeclareAdapterRemovalSupport"));
 
         AllocConsole();
         freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
@@ -48,7 +59,7 @@ namespace gfxshim
         if (d3d12_module)
         {
             FreeLibrary(d3d12_module);
-            dispatch_table = {};
+            d3d12_dispatch_table = {};
         }
         for (auto &&wrapped_resource_pair : wrapped_resource_storage)
         {
@@ -255,9 +266,14 @@ namespace gfxshim
         }
     }
 
-    const D3D12DispatchTable &D3D12HookManager::DispatchTable() const
+    const D3D12DispatchTable &D3D12HookManager::QueryD3D12DispatchTable() const
     {
-        return dispatch_table;
+        return d3d12_dispatch_table;
+    }
+
+    const DXGIDispatchTable &D3D12HookManager::QueryDXGIDispatchTable() const
+    {
+        return dxgi_dispatch_table;
     }
 
     D3D12HookManager &D3D12HookManager::GetInstance()
@@ -266,12 +282,13 @@ namespace gfxshim
         return s_d3d12_hook_manager;
     }
 
+    // Wrap d3d12 exported functions
     HRESULT WINAPI D3D12HookManager::D3D12GetDebugInterface(_In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12GetDebugInterface != nullptr)
+        if (d3d12_dispatch_table.D3D12GetDebugInterface != nullptr)
         {
-            result = dispatch_table.D3D12GetDebugInterface(riid, ppvDebug);
+            result = d3d12_dispatch_table.D3D12GetDebugInterface(riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetDebugInterface");
         }
         return result;
@@ -280,9 +297,9 @@ namespace gfxshim
     HRESULT WINAPI D3D12HookManager::D3D12GetInterface(_In_ REFCLSID rclsid, _In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12GetInterface != nullptr)
+        if (d3d12_dispatch_table.D3D12GetInterface != nullptr)
         {
-            result = dispatch_table.D3D12GetInterface(rclsid, riid, ppvDebug);
+            result = d3d12_dispatch_table.D3D12GetInterface(rclsid, riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetInterface");
         }
         return result;
@@ -294,9 +311,9 @@ namespace gfxshim
                                                         _COM_Outptr_opt_ void **ppDevice)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12CreateDevice != nullptr)
+        if (d3d12_dispatch_table.D3D12CreateDevice != nullptr)
         {
-            result = dispatch_table.D3D12CreateDevice(pAdapter, MinimumFeatureLevel, riid, ppDevice);
+            result = d3d12_dispatch_table.D3D12CreateDevice(pAdapter, MinimumFeatureLevel, riid, ppDevice);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
             if (ppDevice != nullptr && (*ppDevice != nullptr))
             {
@@ -329,9 +346,9 @@ namespace gfxshim
             _Always_(_Outptr_opt_result_maybenull_) ID3DBlob **ppErrorBlob)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12SerializeRootSignature != nullptr)
+        if (d3d12_dispatch_table.D3D12SerializeRootSignature != nullptr)
         {
-            result = dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
+            result = d3d12_dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
             if (ppBlob != nullptr && (*ppBlob) != nullptr)
             {
                 auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
@@ -349,9 +366,9 @@ namespace gfxshim
             _Always_(_Outptr_opt_result_maybenull_) ID3DBlob **ppErrorBlob)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12SerializeVersionedRootSignature != nullptr)
+        if (d3d12_dispatch_table.D3D12SerializeVersionedRootSignature != nullptr)
         {
-            result = dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
+            result = d3d12_dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
             if (ppBlob != nullptr && (*ppBlob) != nullptr)
             {
                 auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
@@ -370,9 +387,9 @@ namespace gfxshim
             _Out_ void **ppRootSignatureDeserializer)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12CreateRootSignatureDeserializer != nullptr)
+        if (d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer != nullptr)
         {
-            result = dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+            result = d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateRootSignatureDeserializer");
         }
         return result;
@@ -385,9 +402,9 @@ namespace gfxshim
             _Out_ void **ppRootSignatureDeserializer)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12CreateVersionedRootSignatureDeserializer != nullptr)
+        if (d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer != nullptr)
         {
-            result = dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+            result = d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateVersionedRootSignatureDeserializer");
         }
         return result;
@@ -400,10 +417,66 @@ namespace gfxshim
             _In_opt_count_(NumFeatures) UINT  *pConfigurationStructSizes)
     {
         HRESULT result = E_UNEXPECTED;
-        if (dispatch_table.D3D12EnableExperimentalFeatures != nullptr)
+        if (d3d12_dispatch_table.D3D12EnableExperimentalFeatures != nullptr)
         {
-            result = dispatch_table.D3D12EnableExperimentalFeatures(NumFeatures, pIIDs, pConfigurationStructs, pConfigurationStructSizes);
+            result = d3d12_dispatch_table.D3D12EnableExperimentalFeatures(NumFeatures, pIIDs, pConfigurationStructs, pConfigurationStructSizes);
             D3D12_WRAPPER_DEBUG("Invoke D3D12EnableExperimentalFeatures");
+        }
+        return result;
+    }
+
+    // Wrap dxgi exported functions
+    HRESULT D3D12HookManager::CreateDXGIFactory(const IID &riid, void **ppFactory)
+    {
+        HRESULT result = E_UNEXPECTED;
+        if (dxgi_dispatch_table.DXGICreateFactory != nullptr)
+        {
+            result = dxgi_dispatch_table.DXGICreateFactory(riid, ppFactory);
+            D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory");
+        }
+        return result;
+    }
+
+    HRESULT D3D12HookManager::CreateDXGIFactory1(const IID &riid, void **ppFactory)
+    {
+        HRESULT result = E_UNEXPECTED;
+        if (dxgi_dispatch_table.DXGICreateFactory1 != nullptr)
+        {
+            result = dxgi_dispatch_table.DXGICreateFactory1(riid, ppFactory);
+            D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory1");
+        }
+        return result;
+    }
+
+    HRESULT D3D12HookManager::CreateDXGIFactory2(UINT Flags, const IID &riid, void **ppFactory)
+    {
+        HRESULT result = E_UNEXPECTED;
+        if (dxgi_dispatch_table.DXGICreateFactory2 != nullptr)
+        {
+            result = dxgi_dispatch_table.DXGICreateFactory2(Flags, riid, ppFactory);
+            D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory2");
+        }
+        return result;
+    }
+
+    HRESULT D3D12HookManager::DXGIGetDebugInterface1(UINT Flags, const IID &riid, void **ppDebug)
+    {
+        HRESULT result = E_UNEXPECTED;
+        if (dxgi_dispatch_table.DXGIGetDebugInterface1 != nullptr)
+        {
+            result = dxgi_dispatch_table.DXGIGetDebugInterface1(Flags, riid, ppDebug);
+            D3D12_WRAPPER_DEBUG("Invoke DXGIGetDebugInterface1");
+        }
+        return result;
+    }
+
+    HRESULT D3D12HookManager::DXGIDeclareAdapterRemovalSupport()
+    {
+        HRESULT result = E_UNEXPECTED;
+        if (dxgi_dispatch_table.DXGIDeclareAdapterRemovalSupport != nullptr)
+        {
+            result = dxgi_dispatch_table.DXGIDeclareAdapterRemovalSupport();
+            D3D12_WRAPPER_DEBUG("Invoke DXGIDeclareAdapterRemovalSupport");
         }
         return result;
     }

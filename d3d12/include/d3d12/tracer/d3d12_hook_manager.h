@@ -49,6 +49,21 @@ namespace gfxshim
         PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES                 D3D12EnableExperimentalFeatures = nullptr;
     };
 
+    struct DXGIDispatchTable
+    {
+        using PFN_DXGI_CREATE_FACTORY                  = HRESULT(WINAPI *)(REFIID, void **);
+        using PFN_DXGI_CREATE_FACTORY1                 = HRESULT(WINAPI *)(REFIID, void **);
+        using PFN_DXGI_CREATE_FACTORY2                 = HRESULT(WINAPI *)(UINT, REFIID, void **);
+        using PFN_DXGI_DECLARE_ADAPTER_REMOVAL_SUPPORT = HRESULT(WINAPI *)();
+        using PFN_DXGI_GET_DEBUG_INTERFACE1            = HRESULT(WINAPI *)(UINT, REFIID, void **);
+
+        PFN_DXGI_CREATE_FACTORY  DXGICreateFactory  = nullptr;
+        PFN_DXGI_CREATE_FACTORY1 DXGICreateFactory1 = nullptr;
+        PFN_DXGI_CREATE_FACTORY2 DXGICreateFactory2 = nullptr;
+        PFN_DXGI_DECLARE_ADAPTER_REMOVAL_SUPPORT DXGIDeclareAdapterRemovalSupport = nullptr;
+        PFN_DXGI_GET_DEBUG_INTERFACE1 DXGIGetDebugInterface1 = nullptr;
+    };
+
     struct D3D12HookManager
     {
     private:
@@ -65,7 +80,9 @@ namespace gfxshim
         std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12CommandListTracer>> command_list_tracer_storage{};
         D3D12DeviceTracer device_tracer{};
         HMODULE d3d12_module = nullptr;
-        D3D12DispatchTable dispatch_table{};
+        HMODULE dxgi_module = nullptr;
+        D3D12DispatchTable d3d12_dispatch_table{};
+        DXGIDispatchTable  dxgi_dispatch_table{};
 
     private:
         D3D12HookManager();
@@ -75,7 +92,9 @@ namespace gfxshim
 
         ~D3D12HookManager();
 
-        [[nodiscard]] const D3D12DispatchTable &DispatchTable() const;
+        [[nodiscard]] const D3D12DispatchTable &QueryD3D12DispatchTable() const;
+
+        [[nodiscard]] const DXGIDispatchTable &QueryDXGIDispatchTable() const;
 
         D3D12HookManager(const D3D12HookManager &) = delete;
         D3D12HookManager &operator=(const D3D12HookManager &) = delete;
@@ -161,7 +180,7 @@ namespace gfxshim
         void PerDrawAndDispatchDump(std::span<ID3D12GraphicsCommandList *> graphics_command_list_pointers, ID3D12Fence *fence, uint64_t fence_value);
 
     public:
-        // Wrap exported d3d12 functions
+        // Wrap d3d12 exported functions
         HRESULT WINAPI D3D12GetDebugInterface(_In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug);
 
         HRESULT WINAPI D3D12GetInterface(_In_ REFCLSID rclsid, _In_ REFIID riid, _COM_Outptr_opt_ void **ppvDebug);
@@ -199,6 +218,17 @@ namespace gfxshim
                 _In_count_(NumFeatures) const IID *pIIDs,
                 _In_opt_count_(NumFeatures) void  *pConfigurationStructs,
                 _In_opt_count_(NumFeatures) UINT  *pConfigurationStructSizes);
+
+        // Wrap dxgi exported functions
+        HRESULT WINAPI CreateDXGIFactory(REFIID riid, void **ppFactory);
+
+        HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void **ppFactory);
+
+        HRESULT WINAPI CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory);
+
+        HRESULT WINAPI DXGIDeclareAdapterRemovalSupport();
+
+        HRESULT WINAPI DXGIGetDebugInterface1(UINT Flags, REFIID riid, void **ppDebug);
     };
 
     template <typename T, typename ... Args>
