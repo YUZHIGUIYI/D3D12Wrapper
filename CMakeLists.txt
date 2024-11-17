@@ -16,14 +16,17 @@ add_subdirectory(external/DirectXTex)
 # DirectX-Headers
 add_subdirectory(external/DirectX-Headers)
 
-# d3d12
-add_subdirectory(d3d12)
+# Common header
+add_subdirectory(common)
 
-# dxgi
+# d3d12 tracer
+add_subdirectory(d3d12_tracer)
+
+# DXGI
 add_subdirectory(dxgi)
 
-# tracer
-add_subdirectory(tracer)
+# D3D12
+add_subdirectory(d3d12)
 
-# d3d11
+# D3D11
 add_subdirectory(d3d11)

@@ -1,6 +1,6 @@
 # D3D12Wrapper
 ## Introduction
-Safely hook `d3d12.dll`, do per-execution-dump or per-draw-dump, and save resource to dds or bin file.
+Safely hook `d3d12.dll` and `dxgi.dll`, do per-execution-dump or per-draw-dump, and save resource to dds or bin file.
 
 ## Getting started
 Firstly, clone this project:
@@ -19,7 +19,7 @@ Secondly, build this project:
 cmake -B build
 cmake --build build --config=Release
 ```
-Thirdly, copy the compiled `d3d12.dll` dynamic library to any program startup path, then launch the application that uses d3d12 api, d3d12 api invokes will be hooked safely.
+Thirdly, copy the compiled `d3d12.dll`, `dxgi.dll` and `d3d12_tracer.dll` dynamic library to any program startup path, then launch the application, d3d12 api and dxgi api invocations will be hooked safely.
 
 ## Dependencies
 The following third-party libraries are used:

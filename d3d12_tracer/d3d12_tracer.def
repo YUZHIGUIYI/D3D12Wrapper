@@ -1,0 +1,7 @@
+LIBRARY d3d12_tracer
+
+EXPORTS
+InjectD3D12Tracer
+InjectDXGITracer
+ReleaseD3D12Tracer
+ReleaseDXGITracer
