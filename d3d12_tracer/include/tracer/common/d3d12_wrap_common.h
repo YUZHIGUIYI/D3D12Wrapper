@@ -6,42 +6,50 @@
 
 #include <gfxshim/common/base.h>
 #include <tracer/common/logger.h>
+#include <comip.h>
 
 namespace gfxshim
 {
-    const IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
+    constexpr IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
 
     MIDL_INTERFACE("E00BB2CC-162E-4AAD-9769-EDE6915395F6")
-    IUnknownWrapper : public IUnknown
+    IUnknownWrapper : IUnknown
     {
     public:
         IUnknownWrapper(REFIID riid, IUnknown *wrapper_object);
 
-        virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
 
-        virtual ULONG STDMETHODCALLTYPE AddRef() override;
+        ULONG STDMETHODCALLTYPE AddRef() override;
 
-        virtual ULONG STDMETHODCALLTYPE Release() override;
+        ULONG STDMETHODCALLTYPE Release() override;
 
         REFIID GetRiid() const;
 
-        IUnknown* GetWrappedObject();
+        IUnknown *GetWrappedObject();
 
-        const IUnknown* GetWrappedObject() const;
+        const IUnknown *GetWrappedObject() const;
 
         template <typename T>
         T *GetWrappedObjectAs()
         {
-            return reinterpret_cast<T *>(m_object);
+            return reinterpret_cast<T *>(m_object.GetInterfacePtr());
         }
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
 
         uint32_t GetRefCount() const;
 
         virtual ~IUnknownWrapper();
 
-    protected:
+    private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
         IID m_riid;
-        IUnknown *m_object;
+        IUnknownPtr m_object;
         std::atomic_uint32_t m_ref_count;
     };
 
@@ -91,9 +99,9 @@ namespace gfxshim
         {
             if (wrapped_object != nullptr)
             {
-                return reinterpret_cast<IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
+				return reinterpret_cast<IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
             }
-            return nullptr;
+			return nullptr;
         }
 
         template <typename T>
@@ -101,10 +109,36 @@ namespace gfxshim
         {
             if (wrapped_object != nullptr)
             {
-                return reinterpret_cast<const IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
+	            return reinterpret_cast<const IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
             }
-            return nullptr;
+			return nullptr;
         }
+
+		template <>
+		inline IUnknown *GetWrappedObject<IUnknown>(IUnknown *wrapped_object)
+		{
+			IUnknown *object = wrapped_object;
+			IUnknownWrapper *wrapper = nullptr;
+			if (object != nullptr &&
+				SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+			{
+				object = wrapper->GetWrappedObject();
+			}
+			return object;
+		}
+
+		template <>
+		inline const IUnknown *GetWrappedObject<IUnknown>(const IUnknown *wrapped_object)
+		{
+			auto *object = const_cast<IUnknown *>(wrapped_object);
+			IUnknownWrapper *wrapper = nullptr;
+			if (object != nullptr &&
+				SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+			{
+				object = wrapper->GetWrappedObject();
+			}
+			return object;
+		}
     }
 }
 

@@ -4,37 +4,36 @@
 
 #include <tracer/common/d3d12_wrap_common.h>
 
+#pragma comment(lib, "comsupp.lib")
+
 namespace gfxshim
 {
     // IUnknownWrapper
     IUnknownWrapper::IUnknownWrapper(const IID &riid, IUnknown *wrapper_object)
-    : m_riid(riid), m_object(wrapper_object), m_ref_count(1)
+    : m_riid(riid), m_object(wrapper_object, false), m_ref_count(1)
     {
 
     }
 
     HRESULT STDMETHODCALLTYPE IUnknownWrapper::QueryInterface(REFIID riid, void** object)
     {
+		if (IsEqualGUID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = this;
+			return S_OK;
+		}
         return m_object->QueryInterface(riid, object);
     }
 
     ULONG STDMETHODCALLTYPE IUnknownWrapper::AddRef()
     {
-        auto result = ++m_ref_count;
-        if (m_object != nullptr)
-        {
-            result = m_object->AddRef();
-        }
+        const auto result = ++m_ref_count;
         return result;
     }
 
     ULONG STDMETHODCALLTYPE IUnknownWrapper::Release()
     {
-        auto result = --m_ref_count;
-        if (m_object != nullptr)
-        {
-            result = m_object->Release();
-        }
+        const auto result = --m_ref_count;
         return result;
     }
 
