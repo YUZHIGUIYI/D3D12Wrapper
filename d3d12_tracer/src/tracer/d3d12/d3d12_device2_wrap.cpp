@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device2_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -19,6 +20,12 @@ namespace gfxshim
             REFIID riid,
             void** ppPipelineState)
     {
-        return GetWrappedObjectAs<ID3D12Device2>()->CreatePipelineState(pDesc, riid, ppPipelineState);
+		// TODO: Unwrap state stream desc
+		const auto result = GetWrappedObjectAs<ID3D12Device2>()->CreatePipelineState(pDesc, riid, ppPipelineState);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppPipelineState);
+		}
+		return result;
     }
 }

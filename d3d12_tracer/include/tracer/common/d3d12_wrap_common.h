@@ -53,7 +53,7 @@ namespace gfxshim
         std::atomic_uint32_t m_ref_count;
     };
 
-    class ID3D12ObjectWrapper : public IUnknownWrapper
+    struct ID3D12ObjectWrapper : IUnknownWrapper
     {
     public:
         ID3D12ObjectWrapper(REFIID riid, IUnknown *object);
@@ -76,7 +76,7 @@ namespace gfxshim
                 _In_z_  LPCWSTR Name);
     };
 
-    class ID3D12DeviceChildWrapper : public ID3D12ObjectWrapper
+    struct ID3D12DeviceChildWrapper : ID3D12ObjectWrapper
     {
     public:
         ID3D12DeviceChildWrapper(REFIID riid, IUnknown *object);
@@ -86,7 +86,7 @@ namespace gfxshim
                 void** ppvDevice);
     };
 
-    class ID3D12PageableWrapper : public ID3D12DeviceChildWrapper
+    struct ID3D12PageableWrapper : ID3D12DeviceChildWrapper
     {
     public:
         ID3D12PageableWrapper(REFIID riid, IUnknown *object);

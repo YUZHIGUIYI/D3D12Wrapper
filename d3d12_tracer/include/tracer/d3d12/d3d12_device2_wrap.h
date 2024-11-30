@@ -8,7 +8,7 @@
 
 namespace gfxshim
 {
-    class ID3D12Device2Wrapper : public ID3D12Device1Wrapper
+    struct ID3D12Device2Wrapper : ID3D12Device1Wrapper
     {
     public:
         ID3D12Device2Wrapper(REFIID riid, IUnknown *object);

@@ -13,6 +13,18 @@ namespace gfxshim
     }
 
     ID3D12GraphicsCommandList9Wrapper::~ID3D12GraphicsCommandList9Wrapper() = default;
+
+	void STDMETHODCALLTYPE ID3D12GraphicsCommandList9Wrapper::RSSetDepthBias(FLOAT DepthBias, FLOAT DepthBiasClamp,
+																			FLOAT SlopeScaledDepthBias)
+	{
+		GetWrappedObjectAs<ID3D12GraphicsCommandList9>()->RSSetDepthBias(DepthBias, DepthBiasClamp, SlopeScaledDepthBias);
+	}
+
+	void STDMETHODCALLTYPE ID3D12GraphicsCommandList9Wrapper::IASetIndexBufferStripCutValue(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue)
+	{
+		GetWrappedObjectAs<ID3D12GraphicsCommandList9>()->IASetIndexBufferStripCutValue(IBStripCutValue);
+	}
+
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::RSSetDepthBias(

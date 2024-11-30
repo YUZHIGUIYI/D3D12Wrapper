@@ -8,7 +8,7 @@
 
 namespace gfxshim
 {
-    class ID3D12GraphicsCommandList2Wrapper : public ID3D12GraphicsCommandList1Wrapper
+    struct ID3D12GraphicsCommandList2Wrapper : ID3D12GraphicsCommandList1Wrapper
     {
     public:
         ID3D12GraphicsCommandList2Wrapper(REFIID riid, IUnknown *object);

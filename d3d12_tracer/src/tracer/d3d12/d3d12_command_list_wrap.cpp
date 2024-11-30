@@ -1,6 +1,7 @@
 #include <tracer/d3d12/d3d12_command_list_wrap.h>
 #include <tracer/d3d12/d3d12_device_wrap.h>
 #include <tracer/d3d12/d3d12_command_allocator_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 #include <tracer/hooks/d3d12_hook_manager.h>
 
 namespace gfxshim
@@ -16,7 +17,8 @@ namespace gfxshim
 
     D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE ID3D12CommandListWrapper::GetType()
     {
-        return GetWrappedObjectAs<ID3D12CommandList>()->GetType();
+        const auto result = GetWrappedObjectAs<ID3D12CommandList>()->GetType();
+		return result;
     }
 
     // ID3D12GraphicsCommandListWrapper
@@ -30,20 +32,26 @@ namespace gfxshim
 
     HRESULT STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::Close()
     {
-        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Close();
+		// TODO: trim draw and dispatch
+        const auto result = GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Close();
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::Reset(
             ID3D12CommandAllocator* pAllocator,
             ID3D12PipelineState* pInitialState)
     {
-        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Reset(pAllocator, pInitialState);
+		// TODO: trim draw and dispatch
+        const auto result = GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Reset(encode::GetWrappedObject<ID3D12CommandAllocator>(pAllocator),
+																								encode::GetWrappedObject<ID3D12PipelineState>(pInitialState));
+		return result;
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ClearState(
             ID3D12PipelineState* pPipelineState)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearState(pPipelineState);
+		// TODO: trim draw and dispatch
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearState(encode::GetWrappedObject<ID3D12PipelineState>(pPipelineState));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::DrawInstanced(
@@ -52,6 +60,7 @@ namespace gfxshim
             UINT StartVertexLocation,
             UINT StartInstanceLocation)
     {
+		// TODO: trim draw
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawInstanced(VertexCountPerInstance, InstanceCount, StartInstanceLocation, StartInstanceLocation);
     }
 
@@ -62,6 +71,7 @@ namespace gfxshim
             INT BaseVertexLocation,
             UINT StartInstanceLocation)
     {
+		// TODO: trim draw
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartInstanceLocation,
                                                                                 BaseVertexLocation, StartInstanceLocation);
     }
@@ -71,6 +81,7 @@ namespace gfxshim
             UINT ThreadGroupCountY,
             UINT ThreadGroupCountZ)
     {
+		// TODO: trim dispatch
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
     }
 
@@ -81,7 +92,9 @@ namespace gfxshim
             UINT64 SrcOffset,
             UINT64 NumBytes)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyBufferRegion(pDstBuffer, DstOffset, pSrcBuffer, SrcOffset, NumBytes);
+		// TODO: trim draw and dispatch
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyBufferRegion(encode::GetWrappedObject<ID3D12Resource>(pDstBuffer), DstOffset,
+																			encode::GetWrappedObject<ID3D12Resource>(pSrcBuffer), SrcOffset, NumBytes);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyTextureRegion(
@@ -92,14 +105,20 @@ namespace gfxshim
             const D3D12_TEXTURE_COPY_LOCATION* pSrc,
             const D3D12_BOX* pSrcBox)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTextureRegion(pDst, DstX, DstY, DstZ, pSrc, pSrcBox);
+		// TODO: check unwrap copy location, trim draw or dispatch
+		D3D12_TEXTURE_COPY_LOCATION dst_copy_location = *pDst;
+		D3D12_TEXTURE_COPY_LOCATION src_copy_location = *pSrc;
+		dst_copy_location.pResource = encode::GetWrappedObject<ID3D12Resource>(pDst->pResource);
+		src_copy_location.pResource = encode::GetWrappedObject<ID3D12Resource>(pSrc->pResource);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTextureRegion(&dst_copy_location, DstX, DstY, DstZ, &src_copy_location, pSrcBox);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyResource(
             ID3D12Resource* pDstResource,
             ID3D12Resource* pSrcResource)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyResource(pDstResource, pSrcResource);
+		// TODO: trim draw and dispatch
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyResource(encode::GetWrappedObject<ID3D12Resource>(pDstResource), encode::GetWrappedObject<ID3D12Resource>(pSrcResource));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::CopyTiles(
@@ -110,8 +129,9 @@ namespace gfxshim
             UINT64 BufferStartOffsetInBytes,
             D3D12_TILE_COPY_FLAGS Flags)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTiles(pTiledResource, pTileRegionStartCoordinate, pTileRegionSize,
-                                                                    pBuffer, BufferStartOffsetInBytes, Flags);
+		// TODO: trim draw and dispatch
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->CopyTiles(encode::GetWrappedObject<ID3D12Resource>(pTiledResource), pTileRegionStartCoordinate, pTileRegionSize,
+                                                                    encode::GetWrappedObject<ID3D12Resource>(pBuffer), BufferStartOffsetInBytes, Flags);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResolveSubresource(
@@ -121,7 +141,9 @@ namespace gfxshim
             UINT SrcSubresource,
             DXGI_FORMAT Format)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveSubresource(pDstResource, DstSubresource, pSrcResource, SrcSubresource, Format);
+		// TODO: trim draw
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveSubresource(encode::GetWrappedObject<ID3D12Resource>(pDstResource), DstSubresource,
+																			encode::GetWrappedObject<ID3D12Resource>(pSrcResource), SrcSubresource, Format);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::IASetPrimitiveTopology(
@@ -158,40 +180,69 @@ namespace gfxshim
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetPipelineState(
             ID3D12PipelineState* pPipelineState)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPipelineState(pPipelineState);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPipelineState(encode::GetWrappedObject<ID3D12PipelineState>(pPipelineState));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResourceBarrier(
             UINT NumBarriers,
             const D3D12_RESOURCE_BARRIER* pBarriers)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResourceBarrier(NumBarriers, pBarriers);
+		if (NumBarriers > 0U && pBarriers != nullptr)
+		{
+			std::vector<D3D12_RESOURCE_BARRIER> unwrap_barriers(NumBarriers);
+			std::memcpy(unwrap_barriers.data(), pBarriers, sizeof(D3D12_RESOURCE_BARRIER) * NumBarriers);
+			for (uint32_t i = 0U; i < NumBarriers; ++i)
+			{
+				if (pBarriers[i].Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+				{
+					unwrap_barriers[i].Transition.pResource = encode::GetWrappedObject<ID3D12Resource>(pBarriers[i].Transition.pResource);
+				} else if (pBarriers[i].Type == D3D12_RESOURCE_BARRIER_TYPE_ALIASING)
+				{
+					unwrap_barriers[i].Aliasing.pResourceBefore = encode::GetWrappedObject<ID3D12Resource>(pBarriers[i].Aliasing.pResourceBefore);
+					unwrap_barriers[i].Aliasing.pResourceAfter = encode::GetWrappedObject<ID3D12Resource>(pBarriers[i].Aliasing.pResourceAfter);
+				} else
+				{
+					unwrap_barriers[i].UAV.pResource = encode::GetWrappedObject<ID3D12Resource>(pBarriers[i].UAV.pResource);
+				}
+			}
+			return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResourceBarrier(NumBarriers, unwrap_barriers.data());
+		}
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResourceBarrier(NumBarriers, pBarriers);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ExecuteBundle(
             ID3D12GraphicsCommandList* pCommandList)
     {
         // TODO: check
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteBundle(pCommandList);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteBundle(encode::GetWrappedObject<ID3D12GraphicsCommandList>(pCommandList));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetDescriptorHeaps(
             UINT NumDescriptorHeaps,
             ID3D12DescriptorHeap* const* ppDescriptorHeaps)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetDescriptorHeaps(NumDescriptorHeaps, ppDescriptorHeaps);
+		if (NumDescriptorHeaps > 0U && ppDescriptorHeaps != nullptr)
+		{
+			std::vector<ID3D12DescriptorHeap *> unwrap_heaps(NumDescriptorHeaps);
+			for (uint32_t i = 0U; i < NumDescriptorHeaps; ++i)
+			{
+				unwrap_heaps[i] = encode::GetWrappedObject<ID3D12DescriptorHeap>(ppDescriptorHeaps[i]);
+			}
+			return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetDescriptorHeaps(NumDescriptorHeaps, unwrap_heaps.data());
+		}
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetDescriptorHeaps(NumDescriptorHeaps, ppDescriptorHeaps);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootSignature(
             ID3D12RootSignature* pRootSignature)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootSignature(pRootSignature);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootSignature(encode::GetWrappedObject<ID3D12RootSignature>(pRootSignature));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetGraphicsRootSignature(
             ID3D12RootSignature* pRootSignature)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootSignature(pRootSignature);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootSignature(encode::GetWrappedObject<ID3D12RootSignature>(pRootSignature));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetComputeRootDescriptorTable(
@@ -343,7 +394,7 @@ namespace gfxshim
             UINT NumRects,
             const D3D12_RECT* pRects)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewUint(ViewGPUHandleInCurrentHeap, ViewCPUHandle, pResource,
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewUint(ViewGPUHandleInCurrentHeap, ViewCPUHandle, encode::GetWrappedObject<ID3D12Resource>(pResource),
                                                                                         Values, NumRects, pRects);
     }
 
@@ -355,7 +406,7 @@ namespace gfxshim
             UINT NumRects,
             const D3D12_RECT* pRects)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewFloat(ViewGPUHandleInCurrentHeap, ViewCPUHandle, pResource,
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ClearUnorderedAccessViewFloat(ViewGPUHandleInCurrentHeap, ViewCPUHandle, encode::GetWrappedObject<ID3D12Resource>(pResource),
                                                                                         Values, NumRects, pRects);
     }
 
@@ -363,7 +414,7 @@ namespace gfxshim
             ID3D12Resource* pResource,
             const D3D12_DISCARD_REGION* pRegion)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DiscardResource(pResource, pRegion);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DiscardResource(encode::GetWrappedObject<ID3D12Resource>(pResource), pRegion);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::BeginQuery(
@@ -371,7 +422,7 @@ namespace gfxshim
             D3D12_QUERY_TYPE Type,
             UINT Index)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->BeginQuery(pQueryHeap, Type, Index);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->BeginQuery(encode::GetWrappedObject<ID3D12QueryHeap>(pQueryHeap), Type, Index);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::EndQuery(
@@ -379,7 +430,7 @@ namespace gfxshim
             D3D12_QUERY_TYPE Type,
             UINT Index)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->EndQuery(pQueryHeap, Type, Index);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->EndQuery(encode::GetWrappedObject<ID3D12QueryHeap>(pQueryHeap), Type, Index);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::ResolveQueryData(
@@ -390,8 +441,8 @@ namespace gfxshim
             ID3D12Resource* pDestinationBuffer,
             UINT64 AlignedDestinationBufferOffset)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveQueryData(pQueryHeap, Type, StartIndex, NumQueries,
-                                                                            pDestinationBuffer, AlignedDestinationBufferOffset);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ResolveQueryData(encode::GetWrappedObject<ID3D12QueryHeap>(pQueryHeap), Type, StartIndex, NumQueries,
+                                                                        encode::GetWrappedObject<ID3D12Resource>(pDestinationBuffer), AlignedDestinationBufferOffset);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetPredication(
@@ -399,7 +450,7 @@ namespace gfxshim
             UINT64 AlignedBufferOffset,
             D3D12_PREDICATION_OP Operation)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPredication(pBuffer, AlignedBufferOffset, Operation);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetPredication(encode::GetWrappedObject<ID3D12Resource>(pBuffer), AlignedBufferOffset, Operation);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandListWrapper::SetMarker(
@@ -431,8 +482,8 @@ namespace gfxshim
             ID3D12Resource* pCountBuffer,
             UINT64 CountBufferOffset)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer,
-                                                                            ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteIndirect(encode::GetWrappedObject<ID3D12CommandSignature>(pCommandSignature), MaxCommandCount, encode::GetWrappedObject<ID3D12Resource>(pArgumentBuffer),
+                                                                            ArgumentBufferOffset, encode::GetWrappedObject<ID3D12Resource>(pCountBuffer), CountBufferOffset);
     }
 }
 

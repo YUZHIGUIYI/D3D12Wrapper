@@ -4,7 +4,7 @@
 
 namespace gfxshim
 {
-    class ID3D12DeviceWrapper : public ID3D12ObjectWrapper
+    struct ID3D12DeviceWrapper : ID3D12ObjectWrapper
     {
     private:
         static std::unordered_map<IUnknown *, ID3D12DeviceWrapper *> m_device_wrapper_map;
@@ -215,8 +215,6 @@ namespace gfxshim
                 D3D12_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips);
 
         virtual LUID STDMETHODCALLTYPE GetAdapterLuid();
-
-        ULONG STDMETHODCALLTYPE Release() override;
     };
 }
 

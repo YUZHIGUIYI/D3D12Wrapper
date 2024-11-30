@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device8_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -20,7 +21,8 @@ namespace gfxshim
             const D3D12_RESOURCE_DESC1* pResourceDescs,
             D3D12_RESOURCE_ALLOCATION_INFO1* pResourceAllocationInfo1)
     {
-        return GetWrappedObjectAs<ID3D12Device8>()->GetResourceAllocationInfo2(visibleMask, numResourceDescs, pResourceDescs, pResourceAllocationInfo1);
+        const auto result = GetWrappedObjectAs<ID3D12Device8>()->GetResourceAllocationInfo2(visibleMask, numResourceDescs, pResourceDescs, pResourceAllocationInfo1);
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device8Wrapper::CreateCommittedResource2(
@@ -33,8 +35,13 @@ namespace gfxshim
             REFIID riidResource,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device8>()->CreateCommittedResource2(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
-                                                                            pOptimizedClearValue, pProtectedSession, riidResource, ppvResource);
+        const auto result = GetWrappedObjectAs<ID3D12Device8>()->CreateCommittedResource2(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
+                                                                            pOptimizedClearValue, encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession), riidResource, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riidResource, ppvResource);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device8Wrapper::CreatePlacedResource1(
@@ -46,8 +53,13 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device8>()->CreatePlacedResource1(pHeap, HeapOffset, pDesc, InitialState,
+        const auto result = GetWrappedObjectAs<ID3D12Device8>()->CreatePlacedResource1(encode::GetWrappedObject<ID3D12Heap>(pHeap), HeapOffset, pDesc, InitialState,
                                                                             pOptimizedClearValue, riid, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvResource);
+		}
+		return result;
     }
 
     void STDMETHODCALLTYPE ID3D12Device8Wrapper::CreateSamplerFeedbackUnorderedAccessView(
@@ -55,7 +67,9 @@ namespace gfxshim
             ID3D12Resource* pFeedbackResource,
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
-        GetWrappedObjectAs<ID3D12Device8>()->CreateSamplerFeedbackUnorderedAccessView(pTargetedResource, pFeedbackResource, DestDescriptor);
+		// TODO: wrap descriptor
+        GetWrappedObjectAs<ID3D12Device8>()->CreateSamplerFeedbackUnorderedAccessView(encode::GetWrappedObject<ID3D12Resource>(pTargetedResource),
+																					encode::GetWrappedObject<ID3D12Resource>(pFeedbackResource), DestDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12Device8Wrapper::GetCopyableFootprints1(

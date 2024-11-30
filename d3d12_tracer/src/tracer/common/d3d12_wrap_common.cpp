@@ -3,6 +3,7 @@
 //
 
 #include <tracer/common/d3d12_wrap_common.h>
+#include <tracer/core/wrapper_creators.h>
 
 #pragma comment(lib, "comsupp.lib")
 
@@ -72,17 +73,20 @@ namespace gfxshim
 
     HRESULT STDMETHODCALLTYPE ID3D12ObjectWrapper::GetPrivateData(const GUID &guid, UINT *pDataSize, void *pData)
     {
-        return GetWrappedObjectAs<ID3D12Object>()->GetPrivateData(guid, pDataSize, pData);
+        const auto result = GetWrappedObjectAs<ID3D12Object>()->GetPrivateData(guid, pDataSize, pData);
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12ObjectWrapper::SetPrivateData(const GUID &guid, UINT DataSize, const void *pData)
     {
-        return GetWrappedObjectAs<ID3D12Object>()->SetPrivateData(guid, DataSize, pData);
+        const auto result = GetWrappedObjectAs<ID3D12Object>()->SetPrivateData(guid, DataSize, pData);
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12ObjectWrapper::SetPrivateDataInterface(const GUID &guid, const IUnknown *pData)
     {
-        return GetWrappedObjectAs<ID3D12Object>()->SetPrivateDataInterface(guid, pData);
+        const auto result = GetWrappedObjectAs<ID3D12Object>()->SetPrivateDataInterface(guid, encode::GetWrappedObject<IUnknown>(pData));
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12ObjectWrapper::SetName(LPCWSTR Name)
@@ -99,7 +103,12 @@ namespace gfxshim
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceChildWrapper::GetDevice(const IID &riid, void **ppvDevice)
     {
-        return GetWrappedObjectAs<ID3D12DeviceChild>()->GetDevice(riid, ppvDevice);
+        const auto result = GetWrappedObjectAs<ID3D12DeviceChild>()->GetDevice(riid, ppvDevice);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvDevice);
+		}
+		return result;
     }
 
     // ID3D12PageableWrapper

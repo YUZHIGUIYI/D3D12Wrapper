@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device5_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -19,7 +20,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvTracker)
     {
-        return GetWrappedObjectAs<ID3D12Device5>()->CreateLifetimeTracker(pOwner, riid, ppvTracker);
+        const auto result = GetWrappedObjectAs<ID3D12Device5>()->CreateLifetimeTracker(encode::GetWrappedObject<ID3D12LifetimeOwner>(pOwner), riid, ppvTracker);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvTracker);
+		}
+		return result;
     }
 
     void STDMETHODCALLTYPE ID3D12Device5Wrapper::RemoveDevice()
@@ -52,8 +58,13 @@ namespace gfxshim
             REFIID riid,
             void** ppMetaCommand)
     {
-        return GetWrappedObjectAs<ID3D12Device5>()->CreateMetaCommand(CommandId, NodeMask, pCreationParametersData,
+        const auto result = GetWrappedObjectAs<ID3D12Device5>()->CreateMetaCommand(CommandId, NodeMask, pCreationParametersData,
                                                                         CreationParametersDataSizeInBytes, riid, ppMetaCommand);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppMetaCommand);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device5Wrapper::CreateStateObject(
@@ -61,7 +72,13 @@ namespace gfxshim
             REFIID riid,
             void** ppStateObject)
     {
-        return GetWrappedObjectAs<ID3D12Device5>()->CreateStateObject(pDesc, riid, ppStateObject);
+		// TODO: unwrap state object desc
+        const auto result = GetWrappedObjectAs<ID3D12Device5>()->CreateStateObject(pDesc, riid, ppStateObject);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppStateObject);
+		}
+		return result;
     }
 
     void STDMETHODCALLTYPE ID3D12Device5Wrapper::GetRaytracingAccelerationStructurePrebuildInfo(

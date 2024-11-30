@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device9_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -19,14 +20,20 @@ namespace gfxshim
             REFIID riid,
             void** ppvSession)
     {
-        return GetWrappedObjectAs<ID3D12Device9>()->CreateShaderCacheSession(pDesc, riid, ppvSession);
+        const auto result = GetWrappedObjectAs<ID3D12Device9>()->CreateShaderCacheSession(pDesc, riid, ppvSession);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvSession);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device9Wrapper::ShaderCacheControl(
             D3D12_SHADER_CACHE_KIND_FLAGS Kinds,
             D3D12_SHADER_CACHE_CONTROL_FLAGS Control)
     {
-        return GetWrappedObjectAs<ID3D12Device9>()->ShaderCacheControl(Kinds, Control);
+        const auto result = GetWrappedObjectAs<ID3D12Device9>()->ShaderCacheControl(Kinds, Control);
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device9Wrapper::CreateCommandQueue1(
@@ -36,6 +43,11 @@ namespace gfxshim
             void** ppCommandQueue)
     {
         // TODO: implement
-        return GetWrappedObjectAs<ID3D12Device9>()->CreateCommandQueue1(pDesc, CreatorID, riid, ppCommandQueue);
+        const auto result = GetWrappedObjectAs<ID3D12Device9>()->CreateCommandQueue1(pDesc, CreatorID, riid, ppCommandQueue);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppCommandQueue);
+		}
+		return result;
     }
 }

@@ -16,6 +16,7 @@ namespace gfxshim
             const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencil,
             D3D12_RENDER_PASS_FLAGS Flags)
     {
+		// TODO: unwrap render target desc and depth stencil desc
         GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->BeginRenderPass(NumRenderTargets, pRenderTargets, pDepthStencil, Flags);
     }
 
@@ -29,7 +30,7 @@ namespace gfxshim
             const void* pInitializationParametersData,
             SIZE_T InitializationParametersDataSizeInBytes)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->InitializeMetaCommand(pMetaCommand, pInitializationParametersData, InitializationParametersDataSizeInBytes);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->InitializeMetaCommand(encode::GetWrappedObject<ID3D12MetaCommand>(pMetaCommand), pInitializationParametersData, InitializationParametersDataSizeInBytes);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList4Wrapper::ExecuteMetaCommand(
@@ -37,7 +38,7 @@ namespace gfxshim
             const void* pExecutionParametersData,
             SIZE_T ExecutionParametersDataSizeInBytes)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->ExecuteMetaCommand(pMetaCommand, pExecutionParametersData, ExecutionParametersDataSizeInBytes);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->ExecuteMetaCommand(encode::GetWrappedObject<ID3D12MetaCommand>(pMetaCommand), pExecutionParametersData, ExecutionParametersDataSizeInBytes);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList4Wrapper::BuildRaytracingAccelerationStructure(
@@ -67,7 +68,7 @@ namespace gfxshim
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList4Wrapper::SetPipelineState1(
             ID3D12StateObject* pStateObject)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->SetPipelineState1(pStateObject);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList4>()->SetPipelineState1(encode::GetWrappedObject<ID3D12StateObject>(pStateObject));
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList4Wrapper::DispatchRays(

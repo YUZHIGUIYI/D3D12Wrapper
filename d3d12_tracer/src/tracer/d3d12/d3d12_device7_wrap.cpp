@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device7_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -20,7 +21,14 @@ namespace gfxshim
             REFIID riid,
             void** ppNewStateObject)
     {
-        return GetWrappedObjectAs<ID3D12Device7>()->AddToStateObject(pAddition, pStateObjectToGrowFrom, riid, ppNewStateObject);
+		// TODO: unwrap state object desc
+        const auto result = GetWrappedObjectAs<ID3D12Device7>()->AddToStateObject(pAddition, encode::GetWrappedObject<ID3D12StateObject>(pStateObjectToGrowFrom),
+																							riid, ppNewStateObject);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppNewStateObject);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device7Wrapper::CreateProtectedResourceSession1(
@@ -28,6 +36,11 @@ namespace gfxshim
             REFIID riid,
             void** ppSession)
     {
-        return GetWrappedObjectAs<ID3D12Device7>()->CreateProtectedResourceSession1(pDesc, riid, ppSession);
+        const auto result = GetWrappedObjectAs<ID3D12Device7>()->CreateProtectedResourceSession1(pDesc, riid, ppSession);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppSession);
+		}
+		return result;
     }
 }

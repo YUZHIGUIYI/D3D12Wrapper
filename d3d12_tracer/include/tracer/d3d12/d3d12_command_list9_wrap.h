@@ -8,13 +8,19 @@
 
 namespace gfxshim
 {
-    class ID3D12GraphicsCommandList9Wrapper : public ID3D12GraphicsCommandList8Wrapper
+    struct ID3D12GraphicsCommandList9Wrapper : ID3D12GraphicsCommandList8Wrapper
     {
     public:
         ID3D12GraphicsCommandList9Wrapper(REFIID riid, IUnknown *object);
 
         ~ID3D12GraphicsCommandList9Wrapper() override;
 
-        // TODO: implement RSSetDepthBias and IASetIndexBufferStripCutValue
+		virtual void STDMETHODCALLTYPE RSSetDepthBias(
+					FLOAT DepthBias,
+					FLOAT DepthBiasClamp,
+					FLOAT SlopeScaledDepthBias);
+
+		virtual void STDMETHODCALLTYPE IASetIndexBufferStripCutValue(
+					D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue);
     };
 }

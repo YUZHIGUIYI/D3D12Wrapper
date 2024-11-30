@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device10_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -26,8 +27,14 @@ namespace gfxshim
             REFIID riidResource,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device10>()->CreateCommittedResource3(pHeapProperties, HeapFlags, pDesc, InitialLayout,
-                                                            pOptimizedClearValue, pProtectedSession, NumCastableFormats, pCastableFormats, riidResource, ppvResource);
+		// TODO: check wrap
+        const auto result = GetWrappedObjectAs<ID3D12Device10>()->CreateCommittedResource3(pHeapProperties, HeapFlags, pDesc, InitialLayout,
+                                                            pOptimizedClearValue, encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession), NumCastableFormats, pCastableFormats, riidResource, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riidResource, ppvResource);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device10Wrapper::CreatePlacedResource2(
@@ -41,8 +48,13 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device10>()->CreatePlacedResource2(pHeap, HeapOffset, pDesc, InitialLayout, pOptimizedClearValue,
+        const auto result = GetWrappedObjectAs<ID3D12Device10>()->CreatePlacedResource2(encode::GetWrappedObject<ID3D12Heap>(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue,
                                                                             NumCastableFormats, pCastableFormats, riid, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvResource);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device10Wrapper::CreateReservedResource2(
@@ -55,7 +67,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device10>()->CreateReservedResource2(pDesc, InitialLayout, pOptimizedClearValue, pProtectedSession,
+        const auto result = GetWrappedObjectAs<ID3D12Device10>()->CreateReservedResource2(pDesc, InitialLayout, pOptimizedClearValue, encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession),
                                                                             NumCastableFormats, pCastableFormats, riid, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvResource);
+		}
+		return result;
     }
 }

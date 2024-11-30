@@ -2,6 +2,7 @@
 #include <tracer/d3d12/d3d12_command_queue_wrap.h>
 #include <tracer/d3d12/d3d12_command_list_wrap.h>
 #include <tracer/d3d12/d3d12_command_allocator_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 #include <tracer/hooks/d3d12_hook_manager.h>
 
 namespace gfxshim
@@ -28,8 +29,11 @@ namespace gfxshim
             REFIID riid,
             void** ppCommandQueue)
     {
-        HRESULT result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandQueue(pDesc, riid, ppCommandQueue);
-        // TODO: add custom command queue
+        const HRESULT result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandQueue(pDesc, riid, ppCommandQueue);
+        if (SUCCEEDED(result))
+        {
+			encode::WrapObject(riid, ppCommandQueue);
+        }
         return result;
     }
 
@@ -38,7 +42,12 @@ namespace gfxshim
             REFIID riid,
             void** ppCommandAllocator)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandAllocator(type, riid, ppCommandAllocator);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandAllocator(type, riid, ppCommandAllocator);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppCommandAllocator);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateGraphicsPipelineState(
@@ -46,7 +55,18 @@ namespace gfxshim
             REFIID riid,
             void** ppPipelineState)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateGraphicsPipelineState(pDesc, riid, ppPipelineState);
+    	// TODO: check creation and wrap, attention root signature
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_state_desc = *pDesc;
+    	if (pipeline_state_desc.pRootSignature != nullptr)
+    	{
+    		pipeline_state_desc.pRootSignature = encode::GetWrappedObject<ID3D12RootSignature>(pipeline_state_desc.pRootSignature);
+    	}
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateGraphicsPipelineState(&pipeline_state_desc, riid, ppPipelineState);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppPipelineState);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateComputePipelineState(
@@ -54,7 +74,18 @@ namespace gfxshim
             REFIID riid,
             void** ppPipelineState)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateComputePipelineState(pDesc, riid, ppPipelineState);
+    	// TODO: check creation and wrap, attention root signature
+    	D3D12_COMPUTE_PIPELINE_STATE_DESC pipeline_state_desc = *pDesc;
+    	if (pipeline_state_desc.pRootSignature != nullptr)
+    	{
+    		pipeline_state_desc.pRootSignature = encode::GetWrappedObject<ID3D12RootSignature>(pipeline_state_desc.pRootSignature);
+    	}
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateComputePipelineState(&pipeline_state_desc, riid, ppPipelineState);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppPipelineState);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateCommandList(
@@ -65,7 +96,13 @@ namespace gfxshim
             REFIID riid,
             void** ppCommandList)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandList(nodeMask, type, pCommandAllocator, pInitialState, riid, ppCommandList);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandList(nodeMask, type, encode::GetWrappedObject<ID3D12CommandAllocator>(pCommandAllocator),
+        																					encode::GetWrappedObject<ID3D12PipelineState>(pInitialState), riid, ppCommandList);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppCommandList);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CheckFeatureSupport(
@@ -73,7 +110,8 @@ namespace gfxshim
             void* pFeatureSupportData,
             UINT FeatureSupportDataSize)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateDescriptorHeap(
@@ -81,13 +119,19 @@ namespace gfxshim
             REFIID riid,
             void** ppvHeap)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateDescriptorHeap(pDescriptorHeapDesc, riid, ppvHeap);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateDescriptorHeap(pDescriptorHeapDesc, riid, ppvHeap);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvHeap);
+    	}
+    	return result;
     }
 
     UINT STDMETHODCALLTYPE ID3D12DeviceWrapper::GetDescriptorHandleIncrementSize(
             D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapType)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->GetDescriptorHandleIncrementSize(DescriptorHeapType);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->GetDescriptorHandleIncrementSize(DescriptorHeapType);
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateRootSignature(
@@ -97,7 +141,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvRootSignature)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, ppvRootSignature);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateRootSignature(nodeMask, pBlobWithRootSignature, blobLengthInBytes, riid, ppvRootSignature);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvRootSignature);
+    	}
+    	return result;
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateConstantBufferView(
@@ -112,7 +161,7 @@ namespace gfxshim
             const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
-        GetWrappedObjectAs<ID3D12Device>()->CreateShaderResourceView(pResource, pDesc, DestDescriptor);
+        GetWrappedObjectAs<ID3D12Device>()->CreateShaderResourceView(encode::GetWrappedObject<ID3D12Resource>(pResource), pDesc, DestDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateUnorderedAccessView(
@@ -121,7 +170,8 @@ namespace gfxshim
             const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
-        GetWrappedObjectAs<ID3D12Device>()->CreateUnorderedAccessView(pResource, pCounterResource, pDesc, DestDescriptor);
+        GetWrappedObjectAs<ID3D12Device>()->CreateUnorderedAccessView(encode::GetWrappedObject<ID3D12Resource>(pResource), encode::GetWrappedObject<ID3D12Resource>(pCounterResource),
+        																pDesc, DestDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateRenderTargetView(
@@ -129,7 +179,7 @@ namespace gfxshim
             const D3D12_RENDER_TARGET_VIEW_DESC* pDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
-        GetWrappedObjectAs<ID3D12Device>()->CreateRenderTargetView(pResource, pDesc, DestDescriptor);
+        GetWrappedObjectAs<ID3D12Device>()->CreateRenderTargetView(encode::GetWrappedObject<ID3D12Resource>(pResource), pDesc, DestDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateDepthStencilView(
@@ -137,7 +187,7 @@ namespace gfxshim
             const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc,
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
-        GetWrappedObjectAs<ID3D12Device>()->CreateDepthStencilView(pResource, pDesc, DestDescriptor);
+        GetWrappedObjectAs<ID3D12Device>()->CreateDepthStencilView(encode::GetWrappedObject<ID3D12Resource>(pResource), pDesc, DestDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateSampler(
@@ -193,8 +243,14 @@ namespace gfxshim
             REFIID riidResource,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
+    	// TODO: add write watch
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateCommittedResource(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
                                                                            pOptimizedClearValue, riidResource, ppvResource);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riidResource, ppvResource);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateHeap(
@@ -202,7 +258,13 @@ namespace gfxshim
             REFIID riid,
             void** ppvHeap)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateHeap(pDesc, riid, ppvHeap);
+    	// TODO: add write watch
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateHeap(pDesc, riid, ppvHeap);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvHeap);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreatePlacedResource(
@@ -214,8 +276,13 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreatePlacedResource(pHeap, HeapOffset, pDesc, InitialState,
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreatePlacedResource(encode::GetWrappedObject<ID3D12Heap>(pHeap), HeapOffset, pDesc, InitialState,
                                                                         pOptimizedClearValue, riid, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvResource);
+		}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateReservedResource(
@@ -225,7 +292,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateReservedResource(pDesc, InitialState, pOptimizedClearValue, riid, ppvResource);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateReservedResource(pDesc, InitialState, pOptimizedClearValue, riid, ppvResource);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvResource);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::CreateSharedHandle(
@@ -235,7 +307,8 @@ namespace gfxshim
             LPCWSTR Name,
             HANDLE* pHandle)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateSharedHandle(pObject, pAttributes, Access, Name, pHandle);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateSharedHandle(encode::GetWrappedObject<ID3D12DeviceChild>(pObject), pAttributes, Access, Name, pHandle);
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::OpenSharedHandle(
@@ -243,7 +316,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvObj)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->OpenSharedHandle(NTHandle, riid, ppvObj);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->OpenSharedHandle(NTHandle, riid, ppvObj);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvObj);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::OpenSharedHandleByName(
@@ -258,6 +336,16 @@ namespace gfxshim
             UINT NumObjects,
             ID3D12Pageable* const* ppObjects)
     {
+    	if (NumObjects > 0U && ppObjects != nullptr)
+    	{
+			std::vector<ID3D12Pageable *> pageable_objects(NumObjects);
+    		for (uint32_t i = 0U; i < NumObjects; ++i)
+    		{
+    			pageable_objects[i] = encode::GetWrappedObject<ID3D12Pageable>(ppObjects[i]);
+    		}
+    		const auto result = GetWrappedObjectAs<ID3D12Device>()->MakeResident(NumObjects, pageable_objects.data());
+    		return result;
+    	}
         return GetWrappedObjectAs<ID3D12Device>()->MakeResident(NumObjects, ppObjects);
     }
 
@@ -265,6 +353,16 @@ namespace gfxshim
             UINT NumObjects,
             ID3D12Pageable* const* ppObjects)
     {
+    	if (NumObjects > 0U && ppObjects != nullptr)
+    	{
+    		std::vector<ID3D12Pageable *> pageable_objects(NumObjects);
+    		for (uint32_t i = 0U; i < NumObjects; ++i)
+    		{
+    			pageable_objects[i] = encode::GetWrappedObject<ID3D12Pageable>(ppObjects[i]);
+    		}
+    		const auto result = GetWrappedObjectAs<ID3D12Device>()->Evict(NumObjects, pageable_objects.data());
+    		return result;
+    	}
         return GetWrappedObjectAs<ID3D12Device>()->Evict(NumObjects, ppObjects);
     }
 
@@ -274,7 +372,12 @@ namespace gfxshim
             REFIID riid,
             void** ppFence)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateFence(InitialValue, Flags, riid, ppFence);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateFence(InitialValue, Flags, riid, ppFence);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppFence);
+    	}
+    	return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::GetDeviceRemovedReason()
@@ -301,11 +404,15 @@ namespace gfxshim
             REFIID riid,
             void** ppvHeap)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateQueryHeap(pDesc, riid, ppvHeap);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateQueryHeap(pDesc, riid, ppvHeap);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvHeap);
+    	}
+    	return result;
     }
 
-    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::SetStablePowerState(
-            BOOL Enable)
+    HRESULT STDMETHODCALLTYPE ID3D12DeviceWrapper::SetStablePowerState(BOOL Enable)
     {
         return GetWrappedObjectAs<ID3D12Device>()->SetStablePowerState(Enable);
     }
@@ -316,7 +423,12 @@ namespace gfxshim
             REFIID riid,
             void** ppvCommandSignature)
     {
-        return GetWrappedObjectAs<ID3D12Device>()->CreateCommandSignature(pDesc, pRootSignature, riid, ppvCommandSignature);
+        const auto result = GetWrappedObjectAs<ID3D12Device>()->CreateCommandSignature(pDesc, encode::GetWrappedObject<ID3D12RootSignature>(pRootSignature), riid, ppvCommandSignature);
+    	if (SUCCEEDED(result))
+    	{
+    		encode::WrapObject(riid, ppvCommandSignature);
+    	}
+    	return result;
     }
 
     void STDMETHODCALLTYPE ID3D12DeviceWrapper::GetResourceTiling(
@@ -328,23 +440,13 @@ namespace gfxshim
             UINT FirstSubresourceTilingToGet,
             D3D12_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips)
     {
-        GetWrappedObjectAs<ID3D12Device>()->GetResourceTiling(pTiledResource, pNumTilesForEntireResource, pPackedMipDesc, pStandardTileShapeForNonPackedMips,
+        GetWrappedObjectAs<ID3D12Device>()->GetResourceTiling(encode::GetWrappedObject<ID3D12Resource>(pTiledResource), pNumTilesForEntireResource, pPackedMipDesc, pStandardTileShapeForNonPackedMips,
                                                               pNumSubresourceTilings, FirstSubresourceTilingToGet, pSubresourceTilingsForNonPackedMips);
     }
 
     LUID STDMETHODCALLTYPE ID3D12DeviceWrapper::GetAdapterLuid()
     {
         return GetWrappedObjectAs<ID3D12Device>()->GetAdapterLuid();
-    }
-
-    ULONG STDMETHODCALLTYPE ID3D12DeviceWrapper::Release()
-    {
-        auto result = IUnknownWrapper::Release();
-        if (result == 0)
-        {
-            delete this;
-        }
-        return result;
     }
 }
 

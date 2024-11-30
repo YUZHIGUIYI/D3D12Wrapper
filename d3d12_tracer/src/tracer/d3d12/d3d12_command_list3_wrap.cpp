@@ -13,12 +13,12 @@ namespace gfxshim
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList3Wrapper::SetProtectedResourceSession(
             ID3D12ProtectedResourceSession* pProtectedResourceSession)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList3>()->SetProtectedResourceSession(pProtectedResourceSession);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList3>()->SetProtectedResourceSession(encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedResourceSession));
     }
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::SetProtectedResourceSession(
-                		ID3D12ProtectedResourceSession *pProtectedResourceSession)
+						ID3D12ProtectedResourceSession *pProtectedResourceSession)
 {
     m_pList3->SetProtectedResourceSession(pProtectedResourceSession);
 }

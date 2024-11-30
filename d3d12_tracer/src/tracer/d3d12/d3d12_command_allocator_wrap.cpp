@@ -5,6 +5,22 @@
 #include <tracer/d3d12/d3d12_command_allocator_wrap.h>
 #include <tracer/d3d12/d3d12_device_wrap.h>
 
+namespace gfxshim
+{
+	ID3D12CommandAllocatorWrapper::ID3D12CommandAllocatorWrapper(const IID &riid, IUnknown *object)
+	: ID3D12PageableWrapper(riid, object)
+	{
+
+	}
+
+	HRESULT STDMETHODCALLTYPE ID3D12CommandAllocatorWrapper::Reset()
+	{
+		const auto result = GetWrappedObjectAs<ID3D12CommandAllocator>()->Reset();
+		return result;
+	}
+
+}
+
 WrappedID3D12CommandAllocator::WrappedID3D12CommandAllocator(ID3D12CommandAllocator *real_command_allocator, WrappedID3D12Device *wrapped_device)
 : m_command_allocator(real_command_allocator), m_wrapped_device(wrapped_device)
 {

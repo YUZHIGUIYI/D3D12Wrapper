@@ -20,7 +20,7 @@ namespace gfxshim
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList5Wrapper::RSSetShadingRateImage(
             ID3D12Resource* shadingRateImage)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList5>()->RSSetShadingRateImage(shadingRateImage);
+        GetWrappedObjectAs<ID3D12GraphicsCommandList5>()->RSSetShadingRateImage(encode::GetWrappedObject<ID3D12Resource>(shadingRateImage));
     }
 }
 

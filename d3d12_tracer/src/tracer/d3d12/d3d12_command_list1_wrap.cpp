@@ -19,8 +19,18 @@ namespace gfxshim
             ID3D12Resource* const* ppDependentResources,
             const D3D12_SUBRESOURCE_RANGE_UINT64* pDependentSubresourceRanges)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT(pDstBuffer, DstOffset, pSrcBuffer, SrcOffset,
-                                                                                Dependencies, ppDependentResources, pDependentSubresourceRanges);
+		if (Dependencies > 0U && ppDependentResources != nullptr)
+		{
+			std::vector<ID3D12Resource *> unwrap_resources(Dependencies);
+			for (uint32_t i = 0U; i < Dependencies; ++i)
+			{
+				unwrap_resources[i] = encode::GetWrappedObject<ID3D12Resource>(ppDependentResources[i]);
+			}
+			return GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT(encode::GetWrappedObject<ID3D12Resource>(pDstBuffer), DstOffset, encode::GetWrappedObject<ID3D12Resource>(pSrcBuffer), SrcOffset,
+																						Dependencies, unwrap_resources.data(), pDependentSubresourceRanges);
+		}
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT(encode::GetWrappedObject<ID3D12Resource>(pDstBuffer), DstOffset, encode::GetWrappedObject<ID3D12Resource>(pSrcBuffer), SrcOffset,
+																						Dependencies, ppDependentResources, pDependentSubresourceRanges);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList1Wrapper::AtomicCopyBufferUINT64(
@@ -32,8 +42,18 @@ namespace gfxshim
             ID3D12Resource* const* ppDependentResources,
             const D3D12_SUBRESOURCE_RANGE_UINT64* pDependentSubresourceRanges)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT64(pDstBuffer, DstOffset, pSrcBuffer, SrcOffset,
-                                                                                    Dependencies, ppDependentResources, pDependentSubresourceRanges);
+		if (Dependencies > 0U && ppDependentResources != nullptr)
+		{
+		    std::vector<ID3D12Resource *> unwrap_resources(Dependencies);
+		    for (uint32_t i = 0U; i < Dependencies; ++i)
+		    {
+				unwrap_resources[i] = encode::GetWrappedObject<ID3D12Resource>(ppDependentResources[i]);
+		    }
+		    return GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT64(encode::GetWrappedObject<ID3D12Resource>(pDstBuffer), DstOffset, encode::GetWrappedObject<ID3D12Resource>(pSrcBuffer), SrcOffset,
+																						Dependencies, unwrap_resources.data(), pDependentSubresourceRanges);
+		}
+        return GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->AtomicCopyBufferUINT64(encode::GetWrappedObject<ID3D12Resource>(pDstBuffer), DstOffset, encode::GetWrappedObject<ID3D12Resource>(pSrcBuffer), SrcOffset,
+																						Dependencies, ppDependentResources, pDependentSubresourceRanges);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList1Wrapper::OMSetDepthBounds(
@@ -62,7 +82,7 @@ namespace gfxshim
             DXGI_FORMAT Format,
             D3D12_RESOLVE_MODE ResolveMode)
     {
-        GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->ResolveSubresourceRegion(pDstResource, DstSubresource, DstX, DstY, pSrcResource,
+        GetWrappedObjectAs<ID3D12GraphicsCommandList1>()->ResolveSubresourceRegion(encode::GetWrappedObject<ID3D12Resource>(pDstResource), DstSubresource, DstX, DstY, encode::GetWrappedObject<ID3D12Resource>(pSrcResource),
                                                                                     SrcSubresource, pSrcRect, Format, ResolveMode);
     }
 

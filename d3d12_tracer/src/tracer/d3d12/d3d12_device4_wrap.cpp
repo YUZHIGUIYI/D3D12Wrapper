@@ -3,6 +3,7 @@
 //
 
 #include <tracer/d3d12/d3d12_device4_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -21,7 +22,12 @@ namespace gfxshim
             REFIID riid,
             void** ppCommandList)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->CreateCommandList1(nodeMask, type, flags, riid, ppCommandList);
+        const auto result = GetWrappedObjectAs<ID3D12Device4>()->CreateCommandList1(nodeMask, type, flags, riid, ppCommandList);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppCommandList);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device4Wrapper::CreateProtectedResourceSession(
@@ -29,7 +35,12 @@ namespace gfxshim
             REFIID riid,
             void** ppSession)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->CreateProtectedResourceSession(pDesc, riid, ppSession);
+        const auto result = GetWrappedObjectAs<ID3D12Device4>()->CreateProtectedResourceSession(pDesc, riid, ppSession);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppSession);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device4Wrapper::CreateCommittedResource1(
@@ -42,8 +53,15 @@ namespace gfxshim
             REFIID riidResource,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->CreateCommittedResource1(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
-                                                                            pOptimizedClearValue, pProtectedSession, riidResource, ppvResource);
+		// TODO: check unwrap
+        const auto result = GetWrappedObjectAs<ID3D12Device4>()->CreateCommittedResource1(pHeapProperties, HeapFlags, pDesc, InitialResourceState,
+																								pOptimizedClearValue, encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession),
+																								riidResource, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riidResource, ppvResource);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device4Wrapper::CreateHeap1(
@@ -52,7 +70,13 @@ namespace gfxshim
             REFIID riid,
             void** ppvHeap)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->CreateHeap1(pDesc, pProtectedSession, riid, ppvHeap);
+		// TODO: check unwrap
+        const auto result = GetWrappedObjectAs<ID3D12Device4>()->CreateHeap1(pDesc, encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession), riid, ppvHeap);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvHeap);
+		}
+		return result;
     }
 
     HRESULT STDMETHODCALLTYPE ID3D12Device4Wrapper::CreateReservedResource1(
@@ -63,8 +87,14 @@ namespace gfxshim
             REFIID riid,
             void** ppvResource)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->CreateReservedResource1(pDesc, InitialState, pOptimizedClearValue,
-                                                                            pProtectedSession, riid, ppvResource);
+		// TODO: check unwrap
+        const auto result = GetWrappedObjectAs<ID3D12Device4>()->CreateReservedResource1(pDesc, InitialState, pOptimizedClearValue,
+                                                                            encode::GetWrappedObject<ID3D12ProtectedResourceSession>(pProtectedSession), riid, ppvResource);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvResource);
+		}
+		return result;
     }
 
     D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE ID3D12Device4Wrapper::GetResourceAllocationInfo1(
@@ -73,6 +103,7 @@ namespace gfxshim
             const D3D12_RESOURCE_DESC* pResourceDescs,
             D3D12_RESOURCE_ALLOCATION_INFO1* pResourceAllocationInfo1)
     {
-        return GetWrappedObjectAs<ID3D12Device4>()->GetResourceAllocationInfo1(visibleMask, numResourceDescs, pResourceDescs, pResourceAllocationInfo1);
+		const auto result = GetWrappedObjectAs<ID3D12Device4>()->GetResourceAllocationInfo1(visibleMask, numResourceDescs, pResourceDescs, pResourceAllocationInfo1);
+		return result;
     }
 }

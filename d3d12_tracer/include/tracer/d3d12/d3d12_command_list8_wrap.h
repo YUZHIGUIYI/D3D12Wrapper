@@ -8,13 +8,13 @@
 
 namespace gfxshim
 {
-    class ID3D12GraphicsCommandList8Wrapper : public ID3D12GraphicsCommandList7Wrapper
+    struct ID3D12GraphicsCommandList8Wrapper : ID3D12GraphicsCommandList7Wrapper
     {
     public:
         ID3D12GraphicsCommandList8Wrapper(REFIID riid, IUnknown *object);
 
         ~ID3D12GraphicsCommandList8Wrapper() override;
 
-        // TODO: implement OMSetFrontAndBackStencilRef
+		virtual void STDMETHODCALLTYPE OMSetFrontAndBackStencilRef(UINT FrontStencilRef, UINT BackStencilRef);
     };
 }

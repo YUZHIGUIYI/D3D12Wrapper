@@ -8,13 +8,19 @@
 
 namespace gfxshim
 {
-    class ID3D12Device12Wrapper : public ID3D12Device11Wrapper
+    struct ID3D12Device12Wrapper : ID3D12Device11Wrapper
     {
     public:
         ID3D12Device12Wrapper(REFIID riid, IUnknown *object);
 
         ~ID3D12Device12Wrapper() override;
 
-        // TODO: implement GetResourceAllocationInfo3
+		virtual D3D12_RESOURCE_ALLOCATION_INFO STDMETHODCALLTYPE GetResourceAllocationInfo3(
+												UINT visibleMask,
+												UINT numResourceDescs,
+												const D3D12_RESOURCE_DESC1* pResourceDescs,
+												const UINT32* pNumCastableFormats,
+												const DXGI_FORMAT* const* ppCastableFormats,
+												D3D12_RESOURCE_ALLOCATION_INFO1* pResourceAllocationInfo1);
     };
 }

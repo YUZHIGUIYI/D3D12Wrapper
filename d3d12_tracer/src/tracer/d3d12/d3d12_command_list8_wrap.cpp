@@ -13,6 +13,12 @@ namespace gfxshim
     }
 
     ID3D12GraphicsCommandList8Wrapper::~ID3D12GraphicsCommandList8Wrapper() = default;
+
+	void STDMETHODCALLTYPE ID3D12GraphicsCommandList8Wrapper::OMSetFrontAndBackStencilRef(UINT FrontStencilRef, UINT BackStencilRef)
+	{
+		GetWrappedObjectAs<ID3D12GraphicsCommandList8>()->OMSetFrontAndBackStencilRef(FrontStencilRef, BackStencilRef);
+	}
+
 }
 
 void STDMETHODCALLTYPE WrappedID3D12GraphicsCommandList::OMSetFrontAndBackStencilRef(

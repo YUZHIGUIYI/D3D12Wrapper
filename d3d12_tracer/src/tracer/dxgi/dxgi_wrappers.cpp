@@ -3,6 +3,7 @@
 //
 
 #include <tracer/dxgi/dxgi_wrappers.h>
+#include <tracer/core/wrapper_creators.h>
 
 namespace gfxshim
 {
@@ -34,6 +35,10 @@ namespace gfxshim
 	HRESULT STDMETHODCALLTYPE IDXGIObjectWrapper::GetParent(const IID &riid, void **ppParent)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIObject>()->GetParent(riid, ppParent);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppParent);
+		}
 		return result;
 	}
 
@@ -50,6 +55,7 @@ namespace gfxshim
 		if (SUCCEEDED(result))
 		{
 			// TODO: wrap device
+			encode::WrapObject(riid, ppDevice);
 		}
 		return result;
 	}
@@ -167,6 +173,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIAdapter>()->EnumOutputs(Output, ppOutput);
 		// TODO: wrap dxgi output
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutput), reinterpret_cast<void **>(ppOutput));
+		}
 		return result;
 	}
 
@@ -275,6 +285,7 @@ namespace gfxshim
 
 	HRESULT STDMETHODCALLTYPE IDXGISwapChainWrapper::Present(UINT SyncInterval, UINT Flags)
 	{
+		// TODO: add flag
 		const auto result = GetWrappedObjectAs<IDXGISwapChain>()->Present(SyncInterval, Flags);
 		return result;
 	}
@@ -283,6 +294,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain>()->GetBuffer(Buffer, riid, ppSurface);
 		// TODO: wrap surface
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppSurface);
+		}
 		return result;
 	}
 
@@ -296,6 +311,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain>()->GetFullscreenState(pFullscreen, ppTarget);
 		// TODO: wrap target as dxgi output
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutput), reinterpret_cast<void **>(ppTarget));
+		}
 		return result;
 	}
 
@@ -305,8 +324,8 @@ namespace gfxshim
 		return result;
 	}
 
-	HRESULT STDMETHODCALLTYPE IDXGISwapChainWrapper::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat,
-																	UINT SwapChainFlags)
+	HRESULT STDMETHODCALLTYPE IDXGISwapChainWrapper::ResizeBuffers(UINT BufferCount, UINT Width, UINT Height,
+																	DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain>()->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
 		return result;
@@ -322,6 +341,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain>()->GetContainingOutput(ppOutput);
 		// TODO: wrap dxgi output
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutput), reinterpret_cast<void **>(ppOutput));
+		}
 		return result;
 	}
 
@@ -350,6 +373,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory>()->EnumAdapters(Adapter, ppAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIAdapter), reinterpret_cast<void **>(ppAdapter));
+		}
 		return result;
 	}
 
@@ -370,6 +397,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory>()->CreateSwapChain(encode::GetWrappedObject<IUnknown>(pDevice), pDesc, ppSwapChain);
 		// TODO: wrap swap chain
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISwapChain), reinterpret_cast<void **>(ppSwapChain));
+		}
 		return result;
 	}
 
@@ -377,6 +408,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory>()->CreateSoftwareAdapter(Module, ppAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIAdapter), reinterpret_cast<void **>(ppAdapter));
+		}
 		return result;
 	}
 
@@ -393,20 +428,29 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIDevice>()->GetAdapter(pAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIAdapter), reinterpret_cast<void **>(pAdapter));
+		}
 		return result;
 	}
 
 	HRESULT STDMETHODCALLTYPE IDXGIDeviceWrapper::CreateSurface(const DXGI_SURFACE_DESC *pDesc, UINT NumSurfaces, DXGI_USAGE Usage,
-											  const DXGI_SHARED_RESOURCE *pSharedResource, IDXGISurface **ppSurface)
+																const DXGI_SHARED_RESOURCE *pSharedResource, IDXGISurface **ppSurface)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIDevice>()->CreateSurface(pDesc, NumSurfaces, Usage, pSharedResource, ppSurface);
 		// TODO: wrap surface array
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObjectArray(__uuidof(IDXGISurface), reinterpret_cast<void **>(ppSurface), NumSurfaces);
+		}
 		return result;
 	}
 
 	HRESULT STDMETHODCALLTYPE IDXGIDeviceWrapper::QueryResourceResidency(IUnknown *const *ppResources, DXGI_RESIDENCY *pResidencyStatus, UINT NumResources)
 	{
 		HRESULT result = S_OK;
+		// TODO: unwrap resources
 		if (NumResources > 0U)
 		{
 			std::vector<IUnknown *> unwrapResources(NumResources);
@@ -419,7 +463,6 @@ namespace gfxshim
 		{
 			result = GetWrappedObjectAs<IDXGIDevice>()->QueryResourceResidency(ppResources, pResidencyStatus, NumResources);
 		}
-		// TODO: unwrap resources
 		return result;
 	}
 
@@ -445,7 +488,11 @@ namespace gfxshim
 	HRESULT STDMETHODCALLTYPE IDXGIFactory1Wrapper::EnumAdapters1(UINT Adapter, IDXGIAdapter1 **ppAdapter)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory1>()->EnumAdapters1(Adapter, ppAdapter);
-		// TODO: wrap adapter array
+		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIAdapter1), reinterpret_cast<void **>(ppAdapter));
+		}
 		return result;
 	}
 
@@ -526,8 +573,12 @@ namespace gfxshim
 																			IDXGIResource **ppDesktopResource)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIOutputDuplication>()->AcquireNextFrame(TimeoutInMilliseconds, pFrameInfo,
-									ppDesktopResource);
+																									ppDesktopResource);
 		// TODO: wrap resource
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIResource), reinterpret_cast<void **>(ppDesktopResource));
+		}
 		return result;
 	}
 
@@ -582,6 +633,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGISurface2>()->GetResource(riid, ppParentResource, pSubresourceIndex);
 		// TODO: wrap parent resource
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppParentResource);
+		}
 		return result;
 	}
 
@@ -596,6 +651,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIResource1>()->CreateSubresourceSurface(index, ppSurface);
 		// TODO: wrap surface2
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISurface2), reinterpret_cast<void **>(ppSurface));
+		}
 		return result;
 	}
 
@@ -621,7 +680,7 @@ namespace gfxshim
 		if (NumResources > 0U)
 		{
 			std::vector<IDXGIResource *> unwrap_resources(NumResources);
-			for (uint32_t i = 0; i < NumResources; i++)
+			for (uint32_t i = 0U; i < NumResources; ++i)
 			{
 				unwrap_resources[i] = encode::GetWrappedObject<IDXGIResource>(ppResources[i]);
 			}
@@ -641,7 +700,7 @@ namespace gfxshim
 		if (NumResources > 0U)
 		{
 			std::vector<IDXGIResource *> unwrap_resources(NumResources);
-			for (uint32_t i = 0; i < NumResources; i++)
+			for (uint32_t i = 0U; i < NumResources; ++i)
 			{
 				unwrap_resources[i] = encode::GetWrappedObject<IDXGIResource>(ppResources[i]);
 			}
@@ -688,6 +747,10 @@ namespace gfxshim
 	HRESULT STDMETHODCALLTYPE IDXGISwapChain1Wrapper::GetCoreWindow(const IID &refiid, void **ppUnk)
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain1>()->GetCoreWindow(refiid, ppUnk);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(refiid, ppUnk);
+		}
 		return result;
 	}
 
@@ -707,6 +770,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChain1>()->GetRestrictToOutput(ppRestrictToOutput);
 		// TODO: wrap dxgi output
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutput), reinterpret_cast<void **>(ppRestrictToOutput));
+		}
 		return result;
 	}
 
@@ -750,18 +817,27 @@ namespace gfxshim
 	HRESULT STDMETHODCALLTYPE IDXGIFactory2Wrapper::CreateSwapChainForHwnd(IUnknown *pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1 *pDesc, const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc,
 																			IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain)
 	{
-		// TODO: wrap
-		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc,
-																								pRestrictToOutput,ppSwapChain);
+		// TODO: unwrap and wrap
+		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForHwnd(encode::GetWrappedObject<IUnknown>(pDevice), hWnd, pDesc, pFullscreenDesc,
+																								encode::GetWrappedObject<IDXGIOutput>(pRestrictToOutput), ppSwapChain);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void **>(ppSwapChain));
+		}
 		return result;
 	}
 
 	HRESULT STDMETHODCALLTYPE IDXGIFactory2Wrapper::CreateSwapChainForCoreWindow(IUnknown *pDevice, IUnknown *pWindow, const DXGI_SWAP_CHAIN_DESC1 *pDesc,
 																				IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain)
 	{
-		// TODO: wrap
-		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc,
-																										pRestrictToOutput, ppSwapChain);
+		// TODO: unwrap and wrap
+		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForCoreWindow(encode::GetWrappedObject<IUnknown>(pDevice),
+																										encode::GetWrappedObject<IUnknown>(pWindow), pDesc,
+																										encode::GetWrappedObject<IDXGIOutput>(pRestrictToOutput), ppSwapChain);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void **>(ppSwapChain));
+		}
 		return result;
 	}
 
@@ -809,7 +885,12 @@ namespace gfxshim
 																				IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain)
 	{
 		// TODO: wrap
-		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+		const auto result = GetWrappedObjectAs<IDXGIFactory2>()->CreateSwapChainForComposition(encode::GetWrappedObject<IUnknown>(pDevice), pDesc,
+																										encode::GetWrappedObject<IDXGIOutput>(pRestrictToOutput), ppSwapChain);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void **>(ppSwapChain));
+		}
 		return result;
 	}
 
@@ -859,6 +940,10 @@ namespace gfxshim
 		// TODO: check
 		const auto result = GetWrappedObjectAs<IDXGIOutput1>()->DuplicateOutput(encode::GetWrappedObject<IUnknown>(pDevice), ppOutputDuplication);
 		// TODO: wrap duplication
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutputDuplication), reinterpret_cast<void **>(ppOutputDuplication));
+		}
 		return result;
 	}
 
@@ -1031,6 +1116,10 @@ namespace gfxshim
 									pDesc,
 									encode::GetWrappedObject<IDXGIOutput>(pRestrictToOutput),
 									ppSwapChain);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void**>(ppSwapChain));
+		}
 		return result;
 	}
 
@@ -1046,6 +1135,10 @@ namespace gfxshim
 									encode::GetWrappedObject<IDXGIResource>(pYuvDecodeBuffers),
 									encode::GetWrappedObject<IDXGIOutput>(pRestrictToOutput),
 									ppSwapChain);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIDecodeSwapChain), reinterpret_cast<void **>(ppSwapChain));
+		}
 		return result;
 	}
 
@@ -1162,6 +1255,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory4>()->EnumAdapterByLuid(AdapterLuid, riid, ppvAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvAdapter);
+		}
 		return result;
 	}
 
@@ -1169,6 +1266,10 @@ namespace gfxshim
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory4>()->EnumWarpAdapter(riid, ppvAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvAdapter);
+		}
 		return result;
 	}
 
@@ -1229,6 +1330,10 @@ namespace gfxshim
 		const auto result = GetWrappedObjectAs<IDXGIOutput5>()->DuplicateOutput1(encode::GetWrappedObject<IUnknown>(pDevice), Flags, SupportedFormatsCount,
 																						pSupportedFormats, ppOutputDuplication);
 		// TODO: wrap output
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(__uuidof(IDXGIOutputDuplication), reinterpret_cast<void **>(ppOutputDuplication));
+		}
 		return result;
 	}
 
@@ -1298,8 +1403,7 @@ namespace gfxshim
 
 	}
 
-	HRESULT STDMETHODCALLTYPE IDXGIFactory5Wrapper::CheckFeatureSupport(DXGI_FEATURE Feature, void *pFeatureSupportData,
-													  UINT FeatureSupportDataSize)
+	HRESULT STDMETHODCALLTYPE IDXGIFactory5Wrapper::CheckFeatureSupport(DXGI_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIFactory5>()->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
 		return result;
@@ -1350,6 +1454,10 @@ namespace gfxshim
 		const auto result = GetWrappedObjectAs<IDXGIFactory6>()->EnumAdapterByGpuPreference(Adapter, GpuPreference, riid,
 																									ppvAdapter);
 		// TODO: wrap adapter
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppvAdapter);
+		}
 		return result;
 	}
 

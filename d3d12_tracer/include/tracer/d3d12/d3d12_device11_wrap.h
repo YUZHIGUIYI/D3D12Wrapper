@@ -8,13 +8,13 @@
 
 namespace gfxshim
 {
-    class ID3D12Device11Wrapper : public ID3D12Device10Wrapper
+    struct ID3D12Device11Wrapper : ID3D12Device10Wrapper
     {
     public:
         ID3D12Device11Wrapper(REFIID riid, IUnknown *object);
 
         ~ID3D12Device11Wrapper() override;
 
-        // TODO: implement CreateSampler2
+		virtual void STDMETHODCALLTYPE CreateSampler2(const D3D12_SAMPLER_DESC2* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor);
     };
 }

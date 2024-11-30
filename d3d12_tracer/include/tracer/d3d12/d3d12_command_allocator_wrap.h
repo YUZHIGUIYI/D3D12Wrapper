@@ -6,6 +6,19 @@
 
 #include <tracer/common/d3d12_wrap_common.h>
 
+namespace gfxshim
+{
+	struct ID3D12CommandAllocatorWrapper : ID3D12PageableWrapper
+	{
+	public:
+		ID3D12CommandAllocatorWrapper(REFIID riid, IUnknown *object);
+
+		~ID3D12CommandAllocatorWrapper() override = default;
+
+		virtual HRESULT STDMETHODCALLTYPE Reset();
+	};
+}
+
 class WrappedID3D12Device;
 
 class WrappedID3D12CommandAllocator : public ID3D12CommandAllocator

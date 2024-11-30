@@ -4,7 +4,7 @@
 
 namespace gfxshim
 {
-    class ID3D12CommandListWrapper : public ID3D12DeviceChildWrapper
+    struct ID3D12CommandListWrapper : ID3D12DeviceChildWrapper
     {
     private:
         inline static std::unordered_map<IUnknown *, ID3D12CommandListWrapper *> m_command_list_wrapper_map;
@@ -18,7 +18,7 @@ namespace gfxshim
         virtual D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE GetType();
     };
 
-    class ID3D12GraphicsCommandListWrapper : public ID3D12CommandListWrapper
+    struct ID3D12GraphicsCommandListWrapper : ID3D12CommandListWrapper
     {
     public:
         ID3D12GraphicsCommandListWrapper(REFIID riid, IUnknown *object);

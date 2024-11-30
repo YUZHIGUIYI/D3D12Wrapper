@@ -2,6 +2,70 @@
 
 #include <tracer/common/d3d12_wrap_common.h>
 
+namespace gfxshim
+{
+	struct ID3D12CommandQueueWrapper : ID3D12PageableWrapper
+	{
+	public:
+		ID3D12CommandQueueWrapper(REFIID riid, IUnknown *object);
+
+		~ID3D12CommandQueueWrapper() override = default;
+
+		virtual void STDMETHODCALLTYPE UpdateTileMappings(
+					ID3D12Resource* pResource,
+					UINT NumResourceRegions,
+					const D3D12_TILED_RESOURCE_COORDINATE* pResourceRegionStartCoordinates,
+					const D3D12_TILE_REGION_SIZE* pResourceRegionSizes,
+					ID3D12Heap* pHeap,
+					UINT NumRanges,
+					const D3D12_TILE_RANGE_FLAGS* pRangeFlags,
+					const UINT* pHeapRangeStartOffsets,
+					const UINT* pRangeTileCounts,
+					D3D12_TILE_MAPPING_FLAGS Flags);
+
+		virtual void STDMETHODCALLTYPE CopyTileMappings(
+			ID3D12Resource* pDstResource,
+			const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate,
+			ID3D12Resource* pSrcResource,
+			const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate,
+			const D3D12_TILE_REGION_SIZE* pRegionSize,
+			D3D12_TILE_MAPPING_FLAGS Flags);
+
+		virtual void STDMETHODCALLTYPE ExecuteCommandLists(
+			UINT NumCommandLists,
+			ID3D12CommandList* const* ppCommandLists);
+
+		virtual void STDMETHODCALLTYPE SetMarker(
+			UINT Metadata,
+			const void* pData,
+			UINT Size);
+
+		virtual void STDMETHODCALLTYPE BeginEvent(
+			UINT Metadata,
+			const void* pData,
+			UINT Size);
+
+		virtual void STDMETHODCALLTYPE EndEvent();
+
+		virtual HRESULT STDMETHODCALLTYPE Signal(
+			ID3D12Fence* pFence,
+			UINT64 Value);
+
+		virtual HRESULT STDMETHODCALLTYPE Wait(
+			ID3D12Fence* pFence,
+			UINT64 Value);
+
+		virtual HRESULT STDMETHODCALLTYPE GetTimestampFrequency(
+			UINT64* pFrequency);
+
+		virtual HRESULT STDMETHODCALLTYPE GetClockCalibration(
+			UINT64* pGpuTimestamp,
+			UINT64* pCpuTimestamp);
+
+		virtual D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE GetDesc();
+	};
+}
+
 class WrappedID3D12Device;
 
 class WrappedID3D12DebugCommandQueue : public ID3D12DebugCommandQueue
