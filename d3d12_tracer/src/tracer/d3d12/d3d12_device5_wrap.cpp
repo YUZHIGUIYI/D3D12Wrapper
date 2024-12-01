@@ -4,6 +4,7 @@
 
 #include <tracer/d3d12/d3d12_device5_wrap.h>
 #include <tracer/core/wrapper_creators.h>
+#include <tracer/common/logger.h>
 
 namespace gfxshim
 {
@@ -73,6 +74,22 @@ namespace gfxshim
             void** ppStateObject)
     {
 		// TODO: unwrap state object desc
+		D3D12_WRAPPER_ERROR("Currently do not unwrap D3D12_STATE_OBJECT_DESC, DXR is not supported");
+		if (pDesc != nullptr && pDesc->NumSubobjects > 0U && pDesc->pSubobjects != nullptr)
+		{
+			D3D12_STATE_OBJECT_DESC unwrapped_state_object_desc = *pDesc;
+			std::vector<D3D12_STATE_SUBOBJECT> unwrapped_state_sub_objects(pDesc->NumSubobjects);
+			std::memcpy(unwrapped_state_sub_objects.data(), pDesc->pSubobjects, sizeof(D3D12_STATE_SUBOBJECT) * pDesc->NumSubobjects);
+			encode::UnwrapStructObjects(unwrapped_state_sub_objects, std::span{ pDesc->pSubobjects, pDesc->NumSubobjects });
+			unwrapped_state_object_desc.pSubobjects = unwrapped_state_sub_objects.data();
+			const auto result = GetWrappedObjectAs<ID3D12Device5>()->CreateStateObject(&unwrapped_state_object_desc, riid, ppStateObject);
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppStateObject);
+			}
+			return result;
+		}
+
         const auto result = GetWrappedObjectAs<ID3D12Device5>()->CreateStateObject(pDesc, riid, ppStateObject);
 		if (SUCCEEDED(result))
 		{

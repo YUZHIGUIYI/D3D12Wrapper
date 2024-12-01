@@ -451,7 +451,7 @@ namespace gfxshim
 	{
 		HRESULT result = S_OK;
 		// TODO: unwrap resources
-		if (NumResources > 0U)
+		if (NumResources > 0U && ppResources != nullptr)
 		{
 			std::vector<IUnknown *> unwrapResources(NumResources);
 			for (uint32_t i = 0U; i < NumResources; ++i)
@@ -1212,7 +1212,7 @@ namespace gfxshim
 	{
 		// TODO: unwrap queues
 		HRESULT result = S_OK;
-		if (BufferCount > 0U)
+		if (BufferCount > 0U && ppPresentQueue != nullptr)
 		{
 			std::vector<IUnknown *> unwrap_present_queues(BufferCount);
 			for (uint32_t i = 0U; i < BufferCount; ++i)
@@ -1361,7 +1361,7 @@ namespace gfxshim
 	{
 		// TODO: Unwrap resources
 		HRESULT result = S_OK;
-		if (NumResources > 0U)
+		if (NumResources > 0U && ppResources != nullptr)
 		{
 			std::vector<IDXGIResource *> unwrap_resources(NumResources);
 			for (uint32_t i = 0U; i < NumResources; ++i)
@@ -1381,7 +1381,7 @@ namespace gfxshim
 	{
 		// TODO: unwrap resources
 		HRESULT result = S_OK;
-		if (NumResources > 0U)
+		if (NumResources > 0U && ppResources != nullptr)
 		{
 			std::vector<IDXGIResource *> unwrap_resources(NumResources);
 			for (uint32_t i = 0U; i < NumResources; ++i)

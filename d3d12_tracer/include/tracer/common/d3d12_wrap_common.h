@@ -10,6 +10,31 @@
 
 namespace gfxshim
 {
+	template <typename T>
+	struct alignas(void *) Dx12SubObjectType
+	{
+		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;
+		T value;
+	};
+
+	using Dx12UintSubObject				   = Dx12SubObjectType<uint32_t>;
+	using Dx12SignatureSubObject		   = Dx12SubObjectType<ID3D12RootSignature *>;
+	using Dx12ShaderBytecodeSubObject	   = Dx12SubObjectType<D3D12_SHADER_BYTECODE>;
+	using Dx12StreamOutputSubObject		   = Dx12SubObjectType<D3D12_STREAM_OUTPUT_DESC>;
+	using Dx12BlendSubObject			   = Dx12SubObjectType<D3D12_BLEND_DESC>;
+	using Dx12RasterizerSubObject		   = Dx12SubObjectType<D3D12_RASTERIZER_DESC>;
+	using Dx12DepthStencilSubObject		   = Dx12SubObjectType<D3D12_DEPTH_STENCIL_DESC>;
+	using Dx12InputLayoutSubObject		   = Dx12SubObjectType<D3D12_INPUT_LAYOUT_DESC>;
+	using Dx12StripCutSubObject			   = Dx12SubObjectType<D3D12_INDEX_BUFFER_STRIP_CUT_VALUE>;
+	using Dx12PrimitiveTopologySubObject   = Dx12SubObjectType<D3D12_PRIMITIVE_TOPOLOGY_TYPE>;
+	using Dx12RenderTargetFormatsSubObject = Dx12SubObjectType<D3D12_RT_FORMAT_ARRAY>;
+	using Dx12FormatSubObject			   = Dx12SubObjectType<DXGI_FORMAT>;
+	using Dx12SampleDescSubObject          = Dx12SubObjectType<DXGI_SAMPLE_DESC>;
+	using Dx12CachedPSOSubObject           = Dx12SubObjectType<D3D12_CACHED_PIPELINE_STATE>;
+	using Dx12TypeFlagsSubObject           = Dx12SubObjectType<D3D12_PIPELINE_STATE_FLAGS>;
+	using Dx12DepthStencil1SubObject       = Dx12SubObjectType<D3D12_DEPTH_STENCIL_DESC1>;
+	using Dx12ViewInstancingSubObject      = Dx12SubObjectType<D3D12_VIEW_INSTANCING_DESC>;
+
     constexpr IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
 
     MIDL_INTERFACE("E00BB2CC-162E-4AAD-9769-EDE6915395F6")
@@ -139,6 +164,12 @@ namespace gfxshim
 			}
 			return object;
 		}
+
+		void UnwrapStructObjects(std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
+
+		void UnwrapStructObjects(D3D12_STATE_SUBOBJECT &unwrapped_sub_object, std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
+
+		void UnwrapStructObjects(D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION &unwrapped_exports_association, std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
     }
 }
 
