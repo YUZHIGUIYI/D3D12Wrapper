@@ -95,15 +95,107 @@
 		return result;
 	}
 
-	// Wrap IDXGIKeyMutex
+	// ===========================================================================================================================================
+	// New wrapped IDXGIKeyMutex
 	IDXGIKeyedMutexWrapper::IDXGIKeyedMutexWrapper(const IID &riid, IUnknown *object)
-	: IDXGIDeviceSubObjectWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGIKeyedMutexWrapper::~IDXGIKeyedMutexWrapper() = default;
+	// Helper functions
+	REFIID IDXGIKeyedMutexWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGIKeyedMutexWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGIKeyedMutexWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGIKeyedMutexWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIKeyedMutexWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIKeyedMutexWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGIObject
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::SetPrivateData(const GUID &Name, UINT DataSize, const void *pData)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->SetPrivateData(Name, DataSize, pData);
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::SetPrivateDataInterface(const GUID &Name, const IUnknown *pUnknown)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->SetPrivateDataInterface(Name, encode::GetWrappedObject<IUnknown>(pUnknown));
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::GetPrivateData(const GUID &Name, UINT *pDataSize, void *pData)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->GetPrivateData(Name, pDataSize, pData);
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::GetParent(const IID &riid, void **ppParent)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->GetParent(riid, ppParent);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppParent);
+		}
+		return result;
+	}
+
+	// IDXGIDeviceSubObject
+	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::GetDevice(const IID &riid, void **ppDevice)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIDeviceSubObject>()->GetDevice(riid, ppDevice);
+		if (SUCCEEDED(result))
+		{
+			// TODO: wrap device
+			encode::WrapObject(riid, ppDevice);
+		}
+		return result;
+	}
+
+	// IDXGIKeyedMutex
 	HRESULT STDMETHODCALLTYPE IDXGIKeyedMutexWrapper::AcquireSync(UINT64 Key, DWORD dwMilliseconds)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIKeyedMutex>()->AcquireSync(Key, dwMilliseconds);
@@ -115,6 +207,7 @@
 		const auto result = GetWrappedObjectAs<IDXGIKeyedMutex>()->ReleaseSync(Key);
 		return result;
 	}
+	// ===========================================================================================================================================
 
 	// Wrap IDXGISurface
 	IDXGISurfaceWrapper::IDXGISurfaceWrapper(const IID &riid, IUnknown *object)
@@ -536,15 +629,66 @@
 		return result;
 	}
 
-	// Wrap IDXGIDisplayControl
+	// ===========================================================================================================================================
+	// New wrapped IDXGIDisplayControl
 	IDXGIDisplayControlWrapper::IDXGIDisplayControlWrapper(const IID &riid, IUnknown *object)
-	: IUnknownWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGIDisplayControlWrapper::~IDXGIDisplayControlWrapper() = default;
+	// Helper functions
+	REFIID IDXGIDisplayControlWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGIDisplayControlWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGIDisplayControlWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGIDisplayControlWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGIDisplayControlWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIDisplayControlWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIDisplayControlWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIDisplayControlWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIDisplayControlWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGIDisplayControl
 	BOOL STDMETHODCALLTYPE IDXGIDisplayControlWrapper::IsStereoEnabled()
 	{
 		const auto result = GetWrappedObjectAs<IDXGIDisplayControl>()->IsStereoEnabled();
@@ -555,16 +699,97 @@
 	{
 		GetWrappedObjectAs<IDXGIDisplayControl>()->SetStereoEnabled(enabled);
 	}
+	// ===========================================================================================================================================
 
+	// ===========================================================================================================================================
 	// Wrap IDXGIOutputDuplication
 	IDXGIOutputDuplicationWrapper::IDXGIOutputDuplicationWrapper(const IID &riid, IUnknown *object)
-	: IDXGIObjectWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGIOutputDuplicationWrapper::~IDXGIOutputDuplicationWrapper() = default;
+	// Helper functions
+	REFIID IDXGIOutputDuplicationWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGIOutputDuplicationWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGIOutputDuplicationWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGIOutputDuplicationWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIOutputDuplicationWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIOutputDuplicationWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGIObject
+	HRESULT STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::SetPrivateData(const GUID &Name, UINT DataSize, const void *pData)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->SetPrivateData(Name, DataSize, pData);
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::SetPrivateDataInterface(const GUID &Name, const IUnknown *pUnknown)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->SetPrivateDataInterface(Name, encode::GetWrappedObject<IUnknown>(pUnknown));
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::GetPrivateData(const GUID &Name, UINT *pDataSize, void *pData)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->GetPrivateData(Name, pDataSize, pData);
+		return result;
+	}
+
+	HRESULT STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::GetParent(const IID &riid, void **ppParent)
+	{
+		const auto result = GetWrappedObjectAs<IDXGIObject>()->GetParent(riid, ppParent);
+		if (SUCCEEDED(result))
+		{
+			encode::WrapObject(riid, ppParent);
+		}
+		return result;
+	}
+
+	// IDXGIOutputDuplication
 	void STDMETHODCALLTYPE IDXGIOutputDuplicationWrapper::GetDesc(DXGI_OUTDUPL_DESC *pDesc)
 	{
 		GetWrappedObjectAs<IDXGIOutputDuplication>()->GetDesc(pDesc);
@@ -623,6 +848,7 @@
 		const auto result = GetWrappedObjectAs<IDXGIOutputDuplication>()->ReleaseFrame();
 		return result;
 	}
+	// ===========================================================================================================================================
 
 	// Wrap IDXGISurface2
 	// IDXGISurface2Wrapper::IDXGISurface2Wrapper(const IID &riid, IUnknown *object)
@@ -650,6 +876,7 @@
 
 	}
 
+	// Helper functions
 	REFIID IDXGISurface2Wrapper::GetRiid() const
 	{
 		return m_riid;
@@ -1325,15 +1552,66 @@
 		return result;
 	}
 
-	// Wrap IDXGIDecodeSwapChain
+	// ===========================================================================================================================================
+	// New wrapped IDXGIDecodeSwapChain
 	IDXGIDecodeSwapChainWrapper::IDXGIDecodeSwapChainWrapper(const IID &riid, IUnknown *object)
-	: IUnknownWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGIDecodeSwapChainWrapper::~IDXGIDecodeSwapChainWrapper() = default;
+	// Helper functions
+	REFIID IDXGIDecodeSwapChainWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGIDecodeSwapChainWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGIDecodeSwapChainWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGIDecodeSwapChainWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGIDecodeSwapChainWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIDecodeSwapChainWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIDecodeSwapChainWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIDecodeSwapChainWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIDecodeSwapChainWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGIDecodeSwapChain
 	HRESULT STDMETHODCALLTYPE IDXGIDecodeSwapChainWrapper::PresentBuffer(UINT BufferToPresent, UINT SyncInterval, UINT Flags)
 	{
 		const auto result = GetWrappedObjectAs<IDXGIDecodeSwapChain>()->PresentBuffer(BufferToPresent, SyncInterval, Flags);
@@ -1387,16 +1665,68 @@
 		const auto result = GetWrappedObjectAs<IDXGIDecodeSwapChain>()->GetColorSpace();
 		return result;
 	}
+	// ===========================================================================================================================================
 
-	// Wrap IDXGIFactoryMedia
+	// ===========================================================================================================================================
+	// New wrapped IDXGIFactoryMedia
 	IDXGIFactoryMediaWrapper::IDXGIFactoryMediaWrapper(const IID &riid, IUnknown *object)
-	: IUnknownWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGIFactoryMediaWrapper::~IDXGIFactoryMediaWrapper() = default;
+	// Helper functions
+	REFIID IDXGIFactoryMediaWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGIFactoryMediaWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGIFactoryMediaWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGIFactoryMediaWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGIFactoryMediaWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIFactoryMediaWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGIFactoryMediaWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIFactoryMediaWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGIFactoryMediaWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGIFactoryMedia
 	HRESULT STDMETHODCALLTYPE IDXGIFactoryMediaWrapper::CreateSwapChainForCompositionSurfaceHandle(IUnknown *pDevice, HANDLE hSurface, const DXGI_SWAP_CHAIN_DESC1 *pDesc,
 																									IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain)
 	{
@@ -1409,7 +1739,7 @@
 									ppSwapChain);
 		if (SUCCEEDED(result))
 		{
-			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void**>(ppSwapChain));
+			encode::WrapObject(__uuidof(IDXGISwapChain1), reinterpret_cast<void **>(ppSwapChain));
 		}
 		return result;
 	}
@@ -1432,16 +1762,68 @@
 		}
 		return result;
 	}
+	// ===========================================================================================================================================
 
-	// Wrap IDXGISwapChainMedia
+	// ===========================================================================================================================================
+	// New wrapped IDXGISwapChainMedia
 	IDXGISwapChainMediaWrapper::IDXGISwapChainMediaWrapper(const IID &riid, IUnknown *object)
-	: IUnknownWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
-	IDXGISwapChainMediaWrapper::~IDXGISwapChainMediaWrapper() = default;
+	// Helper functions
+	REFIID IDXGISwapChainMediaWrapper::GetRiid() const
+	{
+		return m_riid;
+	}
 
+	IUnknown* IDXGISwapChainMediaWrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* IDXGISwapChainMediaWrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t IDXGISwapChainMediaWrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE IDXGISwapChainMediaWrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			D3D12_WRAPPER_DEBUG("Invoke IDXGISwapChainMediaWrapper::QueryInterface, get unknown object");
+			return S_OK;
+		} else
+		{
+			encode::WrapObject(riid, object);
+			D3D12_WRAPPER_DEBUG("Invoke IDXGISwapChainMediaWrapper::QueryInterface, get wrapped object");
+		}
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGISwapChainMediaWrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE IDXGISwapChainMediaWrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// IDXGISwapChainMedia
 	HRESULT STDMETHODCALLTYPE IDXGISwapChainMediaWrapper::GetFrameStatisticsMedia(DXGI_FRAME_STATISTICS_MEDIA *pStats)
 	{
 		const auto result = GetWrappedObjectAs<IDXGISwapChainMedia>()->GetFrameStatisticsMedia(pStats);
@@ -1459,6 +1841,7 @@
 		const auto result = GetWrappedObjectAs<IDXGISwapChainMedia>()->CheckPresentDurationSupport(DesiredPresentDuration, pClosestSmallerPresentDuration, pClosestLargerPresentDuration);
 		return result;
 	}
+	// ===========================================================================================================================================
 
 	// Wrap IDXGIOutput3
 	IDXGIOutput3Wrapper::IDXGIOutput3Wrapper(const IID &riid, IUnknown *object)
@@ -1648,6 +2031,7 @@
 
 	}
 
+	// Helper functions
 	REFIID IDXGISwapChain4Wrapper::GetRiid() const
 	{
 		return m_riid;

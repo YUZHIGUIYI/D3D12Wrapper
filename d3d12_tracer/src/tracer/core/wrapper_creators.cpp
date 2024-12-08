@@ -61,22 +61,52 @@ namespace gfxshim::encode
 	void WrapIDXGIKeyedMutex(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIKeyedMutexWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIKeyedMutexWrapper::QueryExistingDXGIKeyedMutex(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIKeyedMutexWrapper{ riid, wrap_object };
+		IDXGIKeyedMutexWrapper::InsertDXGIKeyedMutex(wrap_object, static_cast<IDXGIKeyedMutexWrapper *>(*object));
 	}
 
 	void WrapIDXGIDisplayControl(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIDisplayControlWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIDisplayControlWrapper::QueryExistingDXGIDisplayControl(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIDisplayControlWrapper{ riid, wrap_object };
+		IDXGIDisplayControlWrapper::InsertDXGIDisplayControl(wrap_object, static_cast<IDXGIDisplayControlWrapper *>(*object));
 	}
 
 	void WrapIDXGIOutputDuplication(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIOutputDuplicationWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIOutputDuplicationWrapper::QueryExistingDXGIOutputDuplication(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIOutputDuplicationWrapper{ riid, wrap_object };
+		IDXGIOutputDuplicationWrapper::InsertDXGIOutputDuplication(wrap_object, static_cast<IDXGIOutputDuplicationWrapper *>(*object));
 	}
 
 	void WrapIDXGISurface(const IID &riid, void **object)
@@ -116,22 +146,52 @@ namespace gfxshim::encode
 	void WrapIDXGIDecodeSwapChain(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIDecodeSwapChainWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIDecodeSwapChainWrapper::QueryExistingDXGIDecodeSwapChain(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIDecodeSwapChainWrapper{ riid, wrap_object };
+		IDXGIDecodeSwapChainWrapper::InsertDXGIDecodeSwapChain(wrap_object, static_cast<IDXGIDecodeSwapChainWrapper *>(*object));
 	}
 
 	void WrapIDXGIFactoryMedia(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIFactoryMediaWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIFactoryMediaWrapper::QueryExistingDXGIFactoryMedia(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIFactoryMediaWrapper{ riid, wrap_object };
+		IDXGIFactoryMediaWrapper::InsertDXGIFactoryMedia(wrap_object, static_cast<IDXGIFactoryMediaWrapper *>(*object));
 	}
 
 	void WrapIDXGISwapChainMedia(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGISwapChainMediaWrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGISwapChainMediaWrapper::QueryExistingDXGISwapChainMedia(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGISwapChainMediaWrapper{ riid, wrap_object };
+		IDXGISwapChainMediaWrapper::InsertDXGISwapChainMedia(wrap_object, static_cast<IDXGISwapChainMediaWrapper *>(*object));
 	}
 
 	void WrapIDXGISwapChain(const IID &riid, void **object)

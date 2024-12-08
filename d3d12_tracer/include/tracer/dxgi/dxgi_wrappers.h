@@ -50,16 +50,84 @@
 		virtual HRESULT STDMETHODCALLTYPE GetEvictionPriority(UINT *pEvictionPriority);
 	};
 
-	// Wrap IDXGIKeyMutex
-	struct IDXGIKeyedMutexWrapper : IDXGIDeviceSubObjectWrapper
+	// New wrapped IDXGIKeyMutex
+	struct IDXGIKeyedMutexWrapper final : IDXGIKeyedMutex
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGIKeyedMutexWrapper *> s_dxgi_keyed_mutex_manager{};
+		inline static std::mutex s_dxgi_keyed_mutex_mutex{};
+
+	public:
 		IDXGIKeyedMutexWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGIKeyedMutexWrapper() override;
+		virtual ~IDXGIKeyedMutexWrapper() = default;
 
-		virtual HRESULT STDMETHODCALLTYPE AcquireSync(UINT64 Key, DWORD dwMilliseconds);
+		// IDXGIKeyedMutexWrapper manager
+		static void InsertDXGIKeyedMutex(void *object_key, IDXGIKeyedMutexWrapper *keyed_mutex)
+		{
+			std::lock_guard guard{ s_dxgi_keyed_mutex_mutex };
+			s_dxgi_keyed_mutex_manager[object_key] = keyed_mutex;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE ReleaseSync(UINT64 Key);
+		static IDXGIKeyedMutexWrapper *QueryExistingDXGIKeyedMutex(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_keyed_mutex_mutex };
+			if (s_dxgi_keyed_mutex_manager.contains(object_key))
+			{
+				return s_dxgi_keyed_mutex_manager[object_key];
+			}
+			return nullptr;
+		}
+
+		// Helper functions
+		REFIID GetRiid() const;
+
+		IUnknown *GetWrappedObject();
+
+		const IUnknown *GetWrappedObject() const;
+
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
+
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGIObject
+		HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) override;
+
+		HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) override;
+
+		HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID Name, UINT* pDataSize, void *pData) override;
+
+		HRESULT STDMETHODCALLTYPE GetParent(REFIID riid, void **ppParent) override;
+
+		// IDXGIDeviceSubObject
+		HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void **ppDevice) override;
+
+		// IDXGIKeyMutex
+		HRESULT STDMETHODCALLTYPE AcquireSync(UINT64 Key, DWORD dwMilliseconds) override;
+
+		HRESULT STDMETHODCALLTYPE ReleaseSync(UINT64 Key) override;
 	};
 
 	// Wrap IDXGISurface
@@ -165,19 +233,6 @@
 	// Wrap IDXGIFactory
 	struct IDXGIFactoryWrapper : IDXGIObjectWrapper
 	{
-		inline static std::unordered_map<void *, IDXGIFactoryWrapper *> s_dxgi_factory_manager{};
-
-		static void InsertDXGIFactory(void *object_key, IDXGIFactoryWrapper *factory) {
-			s_dxgi_factory_manager[object_key] = factory;
-		}
-
-		static IDXGIFactoryWrapper *QueryExistingDXGIFactory(void *object_key) {
-			if (s_dxgi_factory_manager.contains(object_key)) {
-				return s_dxgi_factory_manager[object_key];
-			}
-			return nullptr;
-		}
-
 		IDXGIFactoryWrapper(REFIID riid, IUnknown *object);
 
 		~IDXGIFactoryWrapper() override;
@@ -245,40 +300,161 @@
 		virtual HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(UINT *pMaxLatency);
 	};
 
-	// Wrap IDXGIDisplayControl
-	struct IDXGIDisplayControlWrapper : IUnknownWrapper
+	// New wrapped IDXGIDisplayControl
+	struct IDXGIDisplayControlWrapper : IDXGIDisplayControl
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGIDisplayControlWrapper *> s_dxgi_display_control_manager{};
+		inline static std::mutex s_dxgi_display_control_mutex{};
+
+	public:
 		IDXGIDisplayControlWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGIDisplayControlWrapper() override;
+		virtual ~IDXGIDisplayControlWrapper() = default;
 
-		virtual BOOL STDMETHODCALLTYPE IsStereoEnabled();
+		// IDXGIDisplayControlWrapper manager
+		static void InsertDXGIDisplayControl(void *object_key, IDXGIDisplayControlWrapper *display_control)
+		{
+			std::lock_guard guard{ s_dxgi_display_control_mutex };
+			s_dxgi_display_control_manager[object_key] = display_control;
+		}
 
-		virtual void STDMETHODCALLTYPE SetStereoEnabled(BOOL enabled);
+		static IDXGIDisplayControlWrapper *QueryExistingDXGIDisplayControl(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_display_control_mutex };
+			if (s_dxgi_display_control_manager.contains(object_key))
+			{
+				return s_dxgi_display_control_manager[object_key];
+			}
+			return nullptr;
+		}
+
+		// Helper functions
+		REFIID GetRiid() const;
+
+		IUnknown *GetWrappedObject();
+
+		const IUnknown *GetWrappedObject() const;
+
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
+
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGIDisplayControl
+		BOOL STDMETHODCALLTYPE IsStereoEnabled() override;
+
+		void STDMETHODCALLTYPE SetStereoEnabled(BOOL enabled) override;
 	};
 
-	// Wrap IDXGIOutputDuplication
-	struct IDXGIOutputDuplicationWrapper : IDXGIObjectWrapper
+	// New wrapped IDXGIOutputDuplication
+	struct IDXGIOutputDuplicationWrapper final : IDXGIOutputDuplication
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGIOutputDuplicationWrapper *> s_dxgi_output_duplication_manager{};
+		inline static std::mutex s_dxgi_output_duplication_mutex{};
+
+	public:
 		IDXGIOutputDuplicationWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGIOutputDuplicationWrapper() override;
+		virtual ~IDXGIOutputDuplicationWrapper() = default;
 
-		virtual void STDMETHODCALLTYPE GetDesc(DXGI_OUTDUPL_DESC *pDesc);
+		// IDXGIOutputDuplicationWrapper manager
+		static void InsertDXGIOutputDuplication(void *object_key, IDXGIOutputDuplicationWrapper *output_duplication)
+		{
+			std::lock_guard guard{ s_dxgi_output_duplication_mutex };
+			s_dxgi_output_duplication_manager[object_key] = output_duplication;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE AcquireNextFrame(UINT TimeoutInMilliseconds, DXGI_OUTDUPL_FRAME_INFO *pFrameInfo, IDXGIResource **ppDesktopResource);
+		static IDXGIOutputDuplicationWrapper *QueryExistingDXGIOutputDuplication(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_output_duplication_mutex };
+			if (s_dxgi_output_duplication_manager.contains(object_key))
+			{
+				return s_dxgi_output_duplication_manager[object_key];
+			}
+			return nullptr;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE GetFrameDirtyRects(UINT DirtyRectsBufferSize, RECT *pDirtyRectsBuffer, UINT *pDirtyRectsBufferSizeRequired);
+		// Helper functions
+		REFIID GetRiid() const;
 
-		virtual HRESULT STDMETHODCALLTYPE GetFrameMoveRects(UINT MoveRectsBufferSize, DXGI_OUTDUPL_MOVE_RECT *pMoveRectBuffer, UINT *pMoveRectsBufferSizeRequired);
+		IUnknown *GetWrappedObject();
 
-		virtual HRESULT STDMETHODCALLTYPE GetFramePointerShape(UINT PointerShapeBufferSize, void *pPointerShapeBuffer, UINT *pPointerShapeBufferSizeRequired, DXGI_OUTDUPL_POINTER_SHAPE_INFO *pPointerShapeInfo);
+		const IUnknown *GetWrappedObject() const;
 
-		virtual HRESULT STDMETHODCALLTYPE MapDesktopSurface(DXGI_MAPPED_RECT *pLockedRect);
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE UnMapDesktopSurface();
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE ReleaseFrame();
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGIObject
+		HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID Name, UINT DataSize, const void *pData) override;
+
+		HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID Name, const IUnknown *pUnknown) override;
+
+		HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID Name, UINT* pDataSize, void *pData) override;
+
+		HRESULT STDMETHODCALLTYPE GetParent(REFIID riid, void **ppParent) override;
+
+		// IDXGIOutputDuplication
+		void STDMETHODCALLTYPE GetDesc(DXGI_OUTDUPL_DESC *pDesc) override;
+
+		HRESULT STDMETHODCALLTYPE AcquireNextFrame(UINT TimeoutInMilliseconds, DXGI_OUTDUPL_FRAME_INFO *pFrameInfo, IDXGIResource **ppDesktopResource) override;
+
+		HRESULT STDMETHODCALLTYPE GetFrameDirtyRects(UINT DirtyRectsBufferSize, RECT *pDirtyRectsBuffer, UINT *pDirtyRectsBufferSizeRequired) override;
+
+		HRESULT STDMETHODCALLTYPE GetFrameMoveRects(UINT MoveRectsBufferSize, DXGI_OUTDUPL_MOVE_RECT *pMoveRectBuffer, UINT *pMoveRectsBufferSizeRequired) override;
+
+		HRESULT STDMETHODCALLTYPE GetFramePointerShape(UINT PointerShapeBufferSize, void *pPointerShapeBuffer, UINT *pPointerShapeBufferSizeRequired, DXGI_OUTDUPL_POINTER_SHAPE_INFO *pPointerShapeInfo) override;
+
+		HRESULT STDMETHODCALLTYPE MapDesktopSurface(DXGI_MAPPED_RECT *pLockedRect) override;
+
+		HRESULT STDMETHODCALLTYPE UnMapDesktopSurface() override;
+
+		HRESULT STDMETHODCALLTYPE ReleaseFrame() override;
 	};
 
 	// Wrap IDXGISurface2
@@ -301,6 +477,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGISurface2Wrapper *> s_dxgi_surface_manager{};
+		inline static std::mutex s_dxgi_surface_mutex{};
 
 	public:
 		IDXGISurface2Wrapper(REFIID riid, IUnknown *object);
@@ -310,11 +487,13 @@
 		// IDXGISurface2Wrapper manager
 		static void InsertDXGISurface(void *object_key, IDXGISurface2Wrapper *surface)
 		{
+			std::lock_guard guard{ s_dxgi_surface_mutex };
 			s_dxgi_surface_manager[object_key] = surface;
 		}
 
 		static IDXGISurface2Wrapper *QueryExistingDXGISurface(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_surface_mutex };
 			if (s_dxgi_surface_manager.contains(object_key))
 			{
 				return s_dxgi_surface_manager[object_key];
@@ -400,6 +579,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGIResource1Wrapper *> s_dxgi_resource_manager{};
+		inline static std::mutex s_dxgi_resource_mutex{};
 
 	public:
 		IDXGIResource1Wrapper(REFIID riid, IUnknown *object);
@@ -409,11 +589,13 @@
 		// IDXGIResource1Wrapper manager
 		static void InsertDXGIResource(void *object_key, IDXGIResource1Wrapper *resource)
 		{
+			std::lock_guard guard{ s_dxgi_resource_mutex };
 			s_dxgi_resource_manager[object_key] = resource;
 		}
 
 		static IDXGIResource1Wrapper *QueryExistingDXGIResource(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_resource_mutex };
 			if (s_dxgi_resource_manager.contains(object_key))
 			{
 				return s_dxgi_resource_manager[object_key];
@@ -631,58 +813,228 @@
 		virtual UINT STDMETHODCALLTYPE GetCreationFlags();
 	};
 
-	// Wrap IDXGIDecodeSwapChain
-	struct IDXGIDecodeSwapChainWrapper : IUnknownWrapper
+	// New wrapped IDXGIDecodeSwapChain
+	struct IDXGIDecodeSwapChainWrapper final : IDXGIDecodeSwapChain
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGIDecodeSwapChainWrapper *> s_dxgi_decode_swap_chain_manager{};
+		inline static std::mutex s_dxgi_decode_swap_chain_mutex{};
+
+	public:
 		IDXGIDecodeSwapChainWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGIDecodeSwapChainWrapper() override;
+		virtual ~IDXGIDecodeSwapChainWrapper() = default;
 
-		virtual HRESULT STDMETHODCALLTYPE PresentBuffer(UINT BufferToPresent, UINT SyncInterval, UINT Flags);
+		// IDXGIDecodeSwapChainWrapper manager
+		static void InsertDXGIDecodeSwapChain(void *object_key, IDXGIDecodeSwapChainWrapper *decode_swap_chain)
+		{
+			std::lock_guard guard{ s_dxgi_decode_swap_chain_mutex };
+			s_dxgi_decode_swap_chain_manager[object_key] = decode_swap_chain;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE SetSourceRect(const RECT *pRect);
+		static IDXGIDecodeSwapChainWrapper *QueryExistingDXGIDecodeSwapChain(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_decode_swap_chain_mutex };
+			if (s_dxgi_decode_swap_chain_manager.contains(object_key))
+			{
+				return s_dxgi_decode_swap_chain_manager[object_key];
+			}
+			return nullptr;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE SetTargetRect(const RECT *pRect);
+		// Helper functions
+		REFIID GetRiid() const;
 
-		virtual HRESULT STDMETHODCALLTYPE SetDestSize(UINT Width, UINT Height);
+		IUnknown *GetWrappedObject();
 
-		virtual HRESULT STDMETHODCALLTYPE GetSourceRect(RECT *pRect);
+		const IUnknown *GetWrappedObject() const;
 
-		virtual HRESULT STDMETHODCALLTYPE GetTargetRect(RECT *pRect);
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE GetDestSize(UINT *pWidth, UINT *pHeight);
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE SetColorSpace(DXGI_MULTIPLANE_OVERLAY_YCbCr_FLAGS ColorSpace);
+		uint32_t GetRefCount() const;
 
-		virtual DXGI_MULTIPLANE_OVERLAY_YCbCr_FLAGS STDMETHODCALLTYPE GetColorSpace();
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGIDecodeSwapChain
+		HRESULT STDMETHODCALLTYPE PresentBuffer(UINT BufferToPresent, UINT SyncInterval, UINT Flags) override;
+
+		HRESULT STDMETHODCALLTYPE SetSourceRect(const RECT *pRect) override;
+
+		HRESULT STDMETHODCALLTYPE SetTargetRect(const RECT *pRect) override;
+
+		HRESULT STDMETHODCALLTYPE SetDestSize(UINT Width, UINT Height) override;
+
+		HRESULT STDMETHODCALLTYPE GetSourceRect(RECT *pRect) override;
+
+		HRESULT STDMETHODCALLTYPE GetTargetRect(RECT *pRect) override;
+
+		HRESULT STDMETHODCALLTYPE GetDestSize(UINT *pWidth, UINT *pHeight) override;
+
+		HRESULT STDMETHODCALLTYPE SetColorSpace(DXGI_MULTIPLANE_OVERLAY_YCbCr_FLAGS ColorSpace) override;
+
+		DXGI_MULTIPLANE_OVERLAY_YCbCr_FLAGS STDMETHODCALLTYPE GetColorSpace() override;
 	};
 
-	// Wrap IDXGIFactoryMedia
-	struct IDXGIFactoryMediaWrapper : IUnknownWrapper
+	// New wrapped IDXGIFactoryMedia
+	struct IDXGIFactoryMediaWrapper final : IDXGIFactoryMedia
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGIFactoryMediaWrapper *> s_dxgi_factory_media_manager{};
+		inline static std::mutex s_dxgi_factory_media_mutex{};
+
+	public:
 		IDXGIFactoryMediaWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGIFactoryMediaWrapper() override;
+		virtual ~IDXGIFactoryMediaWrapper() = default;
 
-		virtual HRESULT STDMETHODCALLTYPE CreateSwapChainForCompositionSurfaceHandle(IUnknown *pDevice, HANDLE hSurface, const DXGI_SWAP_CHAIN_DESC1 *pDesc,
-																					IDXGIOutput *pRestrictToOutput, IDXGISwapChain1 **ppSwapChain);
+		// IDXGIFactoryMediaWrapper manager
+		static void InsertDXGIFactoryMedia(void *object_key, IDXGIFactoryMediaWrapper *factory_media)
+		{
+			std::lock_guard guard{ s_dxgi_factory_media_mutex };
+			s_dxgi_factory_media_manager[object_key] = factory_media;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE CreateDecodeSwapChainForCompositionSurfaceHandle(IUnknown *pDevice, HANDLE hSurface, DXGI_DECODE_SWAP_CHAIN_DESC *pDesc,
-																					IDXGIResource *pYuvDecodeBuffers, IDXGIOutput *pRestrictToOutput, IDXGIDecodeSwapChain **ppSwapChain);
+		static IDXGIFactoryMediaWrapper *QueryExistingDXGIFactoryMedia(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_factory_media_mutex };
+			if (s_dxgi_factory_media_manager.contains(object_key))
+			{
+				return s_dxgi_factory_media_manager[object_key];
+			}
+			return nullptr;
+		}
+
+		// Helper functions
+		REFIID GetRiid() const;
+
+		IUnknown *GetWrappedObject();
+
+		const IUnknown *GetWrappedObject() const;
+
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
+
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGIFactoryMedia
+		HRESULT STDMETHODCALLTYPE CreateSwapChainForCompositionSurfaceHandle(IUnknown *pDevice, HANDLE hSurface,
+																			 const DXGI_SWAP_CHAIN_DESC1 *pDesc,
+																			 IDXGIOutput *pRestrictToOutput,
+																			 IDXGISwapChain1 **ppSwapChain) override;
+
+		HRESULT STDMETHODCALLTYPE CreateDecodeSwapChainForCompositionSurfaceHandle(IUnknown *pDevice, HANDLE hSurface, DXGI_DECODE_SWAP_CHAIN_DESC *pDesc,
+																					IDXGIResource *pYuvDecodeBuffers, IDXGIOutput *pRestrictToOutput, IDXGIDecodeSwapChain **ppSwapChain) override;
 	};
 
-	// Wrap IDXGISwapChainMedia
-	struct IDXGISwapChainMediaWrapper : IUnknownWrapper
+	// New wrapped IDXGISwapChainMedia
+	struct IDXGISwapChainMediaWrapper final : IDXGISwapChainMedia
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, IDXGISwapChainMediaWrapper *> s_dxgi_swap_chain_media_manager{};
+		inline static std::mutex s_dxgi_swap_chain_media_mutex{};
+
+	public:
 		IDXGISwapChainMediaWrapper(REFIID riid, IUnknown *object);
 
-		~IDXGISwapChainMediaWrapper() override;
+		virtual ~IDXGISwapChainMediaWrapper() = default;
 
-		virtual HRESULT STDMETHODCALLTYPE GetFrameStatisticsMedia(DXGI_FRAME_STATISTICS_MEDIA *pStats);
+		// IDXGISwapChainMediaWrapper manager
+		static void InsertDXGISwapChainMedia(void *object_key, IDXGISwapChainMediaWrapper *swap_chain_media)
+		{
+			std::lock_guard guard{ s_dxgi_swap_chain_media_mutex };
+			s_dxgi_swap_chain_media_manager[object_key] = swap_chain_media;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE SetPresentDuration(UINT Duration);
+		static IDXGISwapChainMediaWrapper *QueryExistingDXGISwapChainMedia(void *object_key)
+		{
+			std::lock_guard guard{ s_dxgi_swap_chain_media_mutex };
+			if (s_dxgi_swap_chain_media_manager.contains(object_key))
+			{
+				return s_dxgi_swap_chain_media_manager[object_key];
+			}
+			return nullptr;
+		}
 
-		virtual HRESULT STDMETHODCALLTYPE CheckPresentDurationSupport(UINT DesiredPresentDuration, UINT *pClosestSmallerPresentDuration, UINT *pClosestLargerPresentDuration);
+		// Helper functions
+		REFIID GetRiid() const;
+
+		IUnknown *GetWrappedObject();
+
+		const IUnknown *GetWrappedObject() const;
+
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
+
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// IDXGISwapChainMedia
+		HRESULT STDMETHODCALLTYPE GetFrameStatisticsMedia(DXGI_FRAME_STATISTICS_MEDIA *pStats) override;
+
+		HRESULT STDMETHODCALLTYPE SetPresentDuration(UINT Duration) override;
+
+		HRESULT STDMETHODCALLTYPE CheckPresentDurationSupport(UINT DesiredPresentDuration, UINT *pClosestSmallerPresentDuration, UINT *pClosestLargerPresentDuration) override;
 	};
 
 	// Wrap IDXGIOutput3
@@ -787,6 +1139,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGISwapChain4Wrapper *> s_dxgi_swap_chain_manager{};
+		inline static std::mutex s_dxgi_swap_chain_mutex{};
 
 	public:
 		IDXGISwapChain4Wrapper(REFIID riid, IUnknown *object);
@@ -796,11 +1149,13 @@
 		// IDXGISwapChain4Wrapper manager
 		static void InsertDXGISwapChain(void *object_key, IDXGISwapChain4Wrapper *adapter)
 		{
+			std::lock_guard guard{ s_dxgi_swap_chain_mutex };
 			s_dxgi_swap_chain_manager[object_key] = adapter;
 		}
 
 		static IDXGISwapChain4Wrapper *QueryExistingDXGISwapChain(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_swap_chain_mutex };
 			if (s_dxgi_swap_chain_manager.contains(object_key))
 			{
 				return s_dxgi_swap_chain_manager[object_key];
@@ -943,6 +1298,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGIDevice4Wrapper *> s_dxgi_device_manager{};
+		inline static std::mutex s_dxgi_device_mutex{};
 
 	public:
 		IDXGIDevice4Wrapper(REFIID riid, IUnknown *object);
@@ -952,11 +1308,13 @@
 		// IDXGIDevice4Wrapper manager
 		static void InsertDXGIDevice(void *object_key, IDXGIDevice4Wrapper *adapter)
 		{
+			std::lock_guard guard{ s_dxgi_device_mutex };
 			s_dxgi_device_manager[object_key] = adapter;
 		}
 
 		static IDXGIDevice4Wrapper *QueryExistingDXGIDevice(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_device_mutex };
 			if (s_dxgi_device_manager.contains(object_key))
 			{
 				return s_dxgi_device_manager[object_key];
@@ -1064,6 +1422,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGIAdapter4Wrapper *> s_dxgi_adapter_manager{};
+		inline static std::mutex s_dxgi_adapter_mutex{};
 
 	public:
 		IDXGIAdapter4Wrapper(REFIID riid, IUnknown *object);
@@ -1073,11 +1432,13 @@
 		// IDXGIAdapter4Wrapper manager
 		static void InsertDXGIAdapter(void *object_key, IDXGIAdapter4Wrapper *adapter)
 		{
+			std::lock_guard guard{ s_dxgi_adapter_mutex };
 			s_dxgi_adapter_manager[object_key] = adapter;
 		}
 
 		static IDXGIAdapter4Wrapper *QueryExistingDXGIAdapter(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_adapter_mutex };
 			if (s_dxgi_adapter_manager.contains(object_key))
 			{
 				return s_dxgi_adapter_manager[object_key];
@@ -1175,6 +1536,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGIOutput6Wrapper *> s_dxgi_output_manager{};
+		inline static std::mutex s_dxgi_output_mutex{};
 
 	public:
 		IDXGIOutput6Wrapper(REFIID riid, IUnknown *object);
@@ -1184,11 +1546,13 @@
 		// IDXGIOutput6Wrapper manager
 		static void InsertDXGIOutput(void *object_key, IDXGIOutput6Wrapper *output)
 		{
+			std::lock_guard guard{ s_dxgi_output_mutex };
 			s_dxgi_output_manager[object_key] = output;
 		}
 
 		static IDXGIOutput6Wrapper *QueryExistingDXGIOutput(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_output_mutex };
 			if (s_dxgi_output_manager.contains(object_key))
 			{
 				return s_dxgi_output_manager[object_key];
@@ -1319,6 +1683,7 @@
 		std::atomic_uint32_t m_ref_count;
 
 		inline static std::unordered_map<void *, IDXGIFactory7Wrapper *> s_dxgi_factory_manager{};
+		inline static std::mutex s_dxgi_factory_mutex{};
 
 	public:
 		IDXGIFactory7Wrapper(REFIID riid, IUnknown *object);
@@ -1328,11 +1693,13 @@
 		// IDXGIFactory7Wrapper manager
 		static void InsertDXGIFactory(void *object_key, IDXGIFactory7Wrapper *factory)
 		{
+			std::lock_guard guard{ s_dxgi_factory_mutex };
 			s_dxgi_factory_manager[object_key] = factory;
 		}
 
 		static IDXGIFactory7Wrapper *QueryExistingDXGIFactory(void *object_key)
 		{
+			std::lock_guard guard{ s_dxgi_factory_mutex };
 			if (s_dxgi_factory_manager.contains(object_key))
 			{
 				return s_dxgi_factory_manager[object_key];
