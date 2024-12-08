@@ -58,5 +58,5 @@ namespace gfxshim
 
 #if !defined(D3D12_WRAPPER_ASSERT)
 #define D3D12_WRAPPER_ASSERT(expression, ...)	\
-if (!(expression)) { ::gfxshim::Logger::get().call_logger()->error(__VA_ARGS__); } assert(expression)
+if (!(expression)) { ::gfxshim::Logger::get().call_logger()->error(__VA_ARGS__); } assert((expression))
 #endif

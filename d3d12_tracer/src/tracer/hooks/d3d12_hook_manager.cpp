@@ -2,11 +2,14 @@
 // Created by ZZK on 2024/7/25.
 //
 
-#include <tracer/hooks/d3d12_hook_manager.h>
-#include <tracer/d3d12/d3d12_device_wrap.h>
-#include <tracer/d3d12/d3d12_command_queue_wrap.h>
+#include <tracer/core/wrapper_creators.h>
 #include <tracer/d3d12/d3d12_command_allocator_wrap.h>
 #include <tracer/d3d12/d3d12_command_list_wrap.h>
+#include <tracer/d3d12/d3d12_command_queue_wrap.h>
+#include <tracer/d3d12/d3d12_device_wrap.h>
+#include <tracer/hooks/d3d12_hook_manager.h>
+
+#include "tracer/dxgi/dxgi_wrappers.h"
 
 namespace gfxshim
 {
@@ -301,6 +304,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12GetDebugInterface(riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetDebugInterface");
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(riid, ppvDebug);
+			// }
         }
         return result;
     }
@@ -313,6 +320,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12GetInterface(rclsid, riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetInterface");
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(riid, ppvDebug);
+			// }
         }
         return result;
     }
@@ -326,12 +337,19 @@ namespace gfxshim
         auto &&d3d12_dispatch_table = D3D12HookManager::GetInstance().QueryD3D12DispatchTable();
         if (d3d12_dispatch_table.D3D12CreateDevice != nullptr)
         {
-            result = d3d12_dispatch_table.D3D12CreateDevice(pAdapter, MinimumFeatureLevel, riid, ppDevice);
+            result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
             if (ppDevice != nullptr && (*ppDevice != nullptr))
             {
                 D3D12_WRAPPER_DEBUG("Real device pointer: {}", *ppDevice);
             }
+			D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
+			return result;
+			// result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(riid, ppDevice);
+			// }
         }
 
         if(SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
@@ -372,6 +390,12 @@ namespace gfxshim
                 d3d12_hook_manager.StoreBlobToRootSignatureDescMapping(blob_pointer, pRootSignature);
             }
             D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeRootSignature");
+			// result = d3d12_dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
+			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
+			// }
         }
         return result;
     }
@@ -394,6 +418,12 @@ namespace gfxshim
                 d3d12_hook_manager.StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, pRootSignature);
             }
             D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeVersionedRootSignature");
+			// result = d3d12_dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
+			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
+			// }
         }
         return result;
     }
@@ -410,6 +440,11 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateRootSignatureDeserializer");
+			// result = d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			// }
         }
         return result;
     }
@@ -426,6 +461,11 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateVersionedRootSignatureDeserializer");
+			// result = d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			// if (SUCCEEDED(result))
+			// {
+			// 	encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			// }
         }
         return result;
     }
@@ -455,6 +495,10 @@ namespace gfxshim
         {
             result = dxgi_dispatch_table.DXGICreateFactory(riid, ppFactory);
             D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory");
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppFactory);
+			}
         }
         return result;
     }
@@ -467,6 +511,10 @@ namespace gfxshim
         {
             result = dxgi_dispatch_table.DXGICreateFactory1(riid, ppFactory);
             D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory1");
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppFactory);
+			}
         }
         return result;
     }
@@ -479,6 +527,10 @@ namespace gfxshim
         {
             result = dxgi_dispatch_table.DXGICreateFactory2(Flags, riid, ppFactory);
             D3D12_WRAPPER_DEBUG("Invoke CreateDXGIFactory2");
+			if (SUCCEEDED(result) && ppFactory != nullptr && *ppFactory != nullptr)
+			{
+				encode::WrapObject(riid, ppFactory);
+			}
         }
         return result;
     }
@@ -491,6 +543,10 @@ namespace gfxshim
         {
             result = dxgi_dispatch_table.DXGIGetDebugInterface1(Flags, riid, ppDebug);
             D3D12_WRAPPER_DEBUG("Invoke DXGIGetDebugInterface1");
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppDebug);
+			}
         }
         return result;
     }

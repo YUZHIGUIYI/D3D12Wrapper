@@ -82,15 +82,35 @@ namespace gfxshim::encode
 	void WrapIDXGISurface(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGISurface2Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGISurface2Wrapper::QueryExistingDXGISurface(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGISurface2Wrapper{ riid, wrap_object };
+		IDXGISurface2Wrapper::InsertDXGISurface(wrap_object, static_cast<IDXGISurface2Wrapper *>(*object));
 	}
 
 	void WrapIDXGIResource(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIResource1Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIResource1Wrapper::QueryExistingDXGIResource(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIResource1Wrapper{ riid, wrap_object };
+		IDXGIResource1Wrapper::InsertDXGIResource(wrap_object, static_cast<IDXGIResource1Wrapper *>(*object));
 	}
 
 	void WrapIDXGIDecodeSwapChain(const IID &riid, void **object)
@@ -117,36 +137,86 @@ namespace gfxshim::encode
 	void WrapIDXGISwapChain(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGISwapChain4Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGISwapChain4Wrapper::QueryExistingDXGISwapChain(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGISwapChain4Wrapper{ riid, wrap_object };
+		IDXGISwapChain4Wrapper::InsertDXGISwapChain(wrap_object, static_cast<IDXGISwapChain4Wrapper *>(*object));
 	}
 
 	void WrapIDXGIDevice(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIDevice4Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIDevice4Wrapper::QueryExistingDXGIDevice(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIDevice4Wrapper{ riid, wrap_object };
+		IDXGIDevice4Wrapper::InsertDXGIDevice(wrap_object, static_cast<IDXGIDevice4Wrapper *>(*object));
 	}
 
 	void WrapIDXGIAdapter(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIAdapter4Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIAdapter4Wrapper::QueryExistingDXGIAdapter(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			// wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIAdapter4Wrapper{ riid, wrap_object };
+		IDXGIAdapter4Wrapper::InsertDXGIAdapter(wrap_object, static_cast<IDXGIAdapter4Wrapper *>(*object));
 	}
 
 	void WrapIDXGIOutput(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIOutput6Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIOutput6Wrapper::QueryExistingDXGIOutput(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIOutput6Wrapper{ riid, wrap_object };
+		IDXGIOutput6Wrapper::InsertDXGIOutput(wrap_object, static_cast<IDXGIOutput6Wrapper *>(*object));
 	}
 
 	void WrapIDXGIFactory(const IID &riid, void **object)
 	{
 		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new IDXGIFactory7Wrapper{ riid, *wrap_object };
+		auto wrap_object = static_cast<IUnknown *>(*object);
+		auto existing = IDXGIFactory7Wrapper::QueryExistingDXGIFactory(wrap_object);
+		if (existing != nullptr)
+		{
+			existing->AddRef();
+			// wrap_object->Release();
+			*object = existing;
+			return;
+		}
+
+		*object = new IDXGIFactory7Wrapper{ riid, wrap_object };
+		IDXGIFactory7Wrapper::InsertDXGIFactory(wrap_object, static_cast<IDXGIFactory7Wrapper *>(*object));
 	}
 
 	void WrapID3D12RootSignature(const IID &riid, void **object)
@@ -284,9 +354,9 @@ namespace gfxshim::encode
 
 	void WrapID3D12Resource(const IID &riid, void **object)
 	{
-		// TODO: consider existing object
-		auto wrap_object = reinterpret_cast<IUnknown **>(object);
-		*object = new ID3D12Resource2Wrapper{ riid, *wrap_object };
+		// TODO: consider existing object, also used by IDXGISwapChain::GetBuffer
+		// auto wrap_object = reinterpret_cast<IUnknown **>(object);
+		// *object = new ID3D12Resource2Wrapper{ riid, *wrap_object };
 	}
 
 	void WrapID3D12Heap(const IID &riid, void **object)

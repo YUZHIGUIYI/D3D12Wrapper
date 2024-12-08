@@ -8,8 +8,7 @@
 #include <tracer/common/logger.h>
 #include <comip.h>
 
-namespace gfxshim
-{
+
 	template <typename T>
 	struct alignas(void *) Dx12SubObjectType
 	{
@@ -117,53 +116,69 @@ namespace gfxshim
         ID3D12PageableWrapper(REFIID riid, IUnknown *object);
     };
 
-    namespace encode
+    namespace gfxshim::encode
     {
-        template <typename T>
-        T *GetWrappedObject(T *wrapped_object)
-        {
-            if (wrapped_object != nullptr)
-            {
-				return reinterpret_cast<IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
-            }
-			return nullptr;
-        }
-
-        template <typename T>
-        const T *GetWrappedObject(const T *wrapped_object)
-        {
-            if (wrapped_object != nullptr)
-            {
-	            return reinterpret_cast<const IUnknownWrapper *>(wrapped_object)->GetWrappedObjectAs<T>();
-            }
-			return nullptr;
-        }
-
-		template <>
-		inline IUnknown *GetWrappedObject<IUnknown>(IUnknown *wrapped_object)
+		template <typename T>
+		requires std::is_base_of_v<IUnknown, T>
+		T *GetWrappedObject(T *wrapped_object)
 		{
-			IUnknown *object = wrapped_object;
-			IUnknownWrapper *wrapper = nullptr;
-			if (object != nullptr &&
-				SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+			if (wrapped_object != nullptr)
 			{
-				object = wrapper->GetWrappedObject();
+				// For the unwrapped object, QueryInterface below would always return fail/no-interface result;
+				// for the wrapped object, QueryInterface below would always return successful result, and get the unwrapped unknown object
+				void *unknown_object = nullptr;
+				if (auto result = wrapped_object->QueryInterface(IID_IUnknown_Wrapper, &unknown_object); SUCCEEDED(result))
+				{
+					return static_cast<T *>(unknown_object);
+				}
+				return wrapped_object;
 			}
-			return object;
+			return nullptr;
 		}
 
-		template <>
-		inline const IUnknown *GetWrappedObject<IUnknown>(const IUnknown *wrapped_object)
+		template <typename T>
+		requires std::is_base_of_v<IUnknown, T>
+		const T *GetWrappedObject(const T *wrapped_object)
 		{
-			auto *object = const_cast<IUnknown *>(wrapped_object);
-			IUnknownWrapper *wrapper = nullptr;
-			if (object != nullptr &&
-				SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+			if (wrapped_object != nullptr)
 			{
-				object = wrapper->GetWrappedObject();
+				// For unwrapped object, QueryInterface below would always return fail/no-interface result;
+				// for the wrapped object, QueryInterface below would always return successful result, and get the unwrapped unknown object
+				void *unknown_object = nullptr;
+				if (auto result = const_cast<T *>(wrapped_object)->QueryInterface(IID_IUnknown_Wrapper, &unknown_object); SUCCEEDED(result))
+				{
+					return static_cast<const T *>(unknown_object);
+				}
+				return wrapped_object;
 			}
-			return object;
+			return nullptr;
 		}
+
+		// template <>
+		// inline IUnknown *GetWrappedObject<IUnknown>(IUnknown *wrapped_object)
+		// {
+		// 	IUnknown *object = wrapped_object;
+		// 	IUnknownWrapper *wrapper = nullptr;
+		// 	if (object != nullptr &&
+		// 		SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+		// 	{
+		// 		object = wrapper->GetWrappedObject();
+		// 	}
+		// 	return object;
+		// }
+		//
+		// template <>
+		// inline const IUnknown *GetWrappedObject<IUnknown>(const IUnknown *wrapped_object)
+		// {
+		// 	auto *object = const_cast<IUnknown *>(wrapped_object);
+		// 	IUnknownWrapper *wrapper = nullptr;
+		// 	if (object != nullptr &&
+		// 		SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
+		// 	{
+		// 		object = wrapper->GetWrappedObject();
+		// 	}
+		// 	return object;
+		// }
 
 		void UnwrapStructObjects(std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
 
@@ -171,7 +186,7 @@ namespace gfxshim
 
 		void UnwrapStructObjects(D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION &unwrapped_exports_association, std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
     }
-}
+
 
 
 
