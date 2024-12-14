@@ -21,6 +21,8 @@ namespace gfxshim::encode
 
 	void WrapObjectArray(REFIID riid, void **object, uint32_t num_object);
 
+	void WrapIUnknown(REFIID riid, void **object);
+
 	void WrapIDXGIKeyedMutex(REFIID riid, void **object);
 
 	void WrapIDXGIDisplayControl(REFIID riid, void **object);
@@ -136,6 +138,7 @@ namespace gfxshim::encode
 	void WrapID3D12InfoQueue(REFIID riid, void **object);
 
 	const std::unordered_map<IID, std::function<void(REFIID, void **)>, IIDHash> kWrapFunctionTable{
+		{ __uuidof(IUnknown), WrapIUnknown },
 		{ __uuidof(IDXGIKeyedMutex), WrapIDXGIKeyedMutex },
 		{ __uuidof(IDXGIDisplayControl), WrapIDXGIDisplayControl },
 		{ __uuidof(IDXGIOutputDuplication), WrapIDXGIOutputDuplication },
@@ -223,6 +226,8 @@ namespace gfxshim::encode
 		{ __uuidof(ID3D12Device10), WrapID3D12Device },
 		{ __uuidof(ID3D12Device11), WrapID3D12Device },
 		{ __uuidof(ID3D12Device12), WrapID3D12Device },
+		{ __uuidof(ID3D12Device13), WrapID3D12Device },
+		{ __uuidof(ID3D12Device14), WrapID3D12Device },
 		{ __uuidof(ID3D12VirtualizationGuestDevice), WrapID3D12VirtualizationGuestDevice },
 		{ __uuidof(ID3D12Tools), WrapID3D12Tools },
 		{ __uuidof(ID3D12SDKConfiguration), WrapID3D12SDKConfiguration },
@@ -240,6 +245,7 @@ namespace gfxshim::encode
 		{ __uuidof(ID3D12GraphicsCommandList7), WrapID3D12CommandList },
 		{ __uuidof(ID3D12GraphicsCommandList8), WrapID3D12CommandList },
 		{ __uuidof(ID3D12GraphicsCommandList9), WrapID3D12CommandList },
+		{ __uuidof(ID3D12GraphicsCommandList10), WrapID3D12CommandList },
 		// { IID_ID3D12DSRDeviceFactory, WrapID3D12DSRDeviceFactory },  // TODO: add
 		{ __uuidof(ID3D10Blob), WrapID3D10Blob },
 		{ __uuidof(ID3DDestructionNotifier), WrapID3DDestructionNotifier },

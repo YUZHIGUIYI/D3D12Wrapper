@@ -4,14 +4,81 @@
 
 namespace gfxshim
 {
-	struct ID3D12CommandQueueWrapper : ID3D12PageableWrapper
+	struct ID3D12CommandQueueWrapper final : ID3D12CommandQueue
 	{
+	private:
+		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+
+		inline static std::unordered_map<void *, ID3D12CommandQueueWrapper *> s_d3d12_command_queue_manager{};
+		inline static std::mutex s_d3d12_command_queue_mutex{};
+
 	public:
 		ID3D12CommandQueueWrapper(REFIID riid, IUnknown *object);
 
-		~ID3D12CommandQueueWrapper() override = default;
+		virtual ~ID3D12CommandQueueWrapper() = default;
 
-		virtual void STDMETHODCALLTYPE UpdateTileMappings(
+		// ID3D12CommandQueueWrapper manager
+		static void InsertD3D12CommandQueue(void *object_key, ID3D12CommandQueueWrapper *command_queue)
+		{
+			std::lock_guard guard{ s_d3d12_command_queue_mutex };
+			s_d3d12_command_queue_manager[object_key] = command_queue;
+		}
+
+		static ID3D12CommandQueueWrapper *QueryExistingD3D12CommandQueue(void *object_key)
+		{
+			std::lock_guard guard{ s_d3d12_command_queue_mutex };
+			if (s_d3d12_command_queue_manager.contains(object_key))
+			{
+				return s_d3d12_command_queue_manager[object_key];
+			}
+			return nullptr;
+		}
+
+		// Helper functions
+		REFIID GetRiid() const;
+
+		IUnknown *GetWrappedObject();
+
+		const IUnknown *GetWrappedObject() const;
+
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
+
+		template <typename T>
+		const T *GetWrappedObjectAs() const
+		{
+			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
+		}
+
+		uint32_t GetRefCount() const;
+
+		// IUnknown
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+
+		ULONG STDMETHODCALLTYPE AddRef() override;
+
+		ULONG STDMETHODCALLTYPE Release() override;
+
+		// ID3D12Object
+		HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID guid, UINT* pDataSize, void* pData) override;
+
+		HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID guid, UINT DataSize, const void* pData) override;
+
+		HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(REFGUID guid, const IUnknown* pData) override;
+
+		HRESULT STDMETHODCALLTYPE SetName(LPCWSTR Name) override;
+
+		// ID3D12DeviceChild
+		HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void** ppvDevice) override;
+
+		// ID3D12CommandQueue
+		void STDMETHODCALLTYPE UpdateTileMappings(
 					ID3D12Resource* pResource,
 					UINT NumResourceRegions,
 					const D3D12_TILED_RESOURCE_COORDINATE* pResourceRegionStartCoordinates,
@@ -21,48 +88,47 @@ namespace gfxshim
 					const D3D12_TILE_RANGE_FLAGS* pRangeFlags,
 					const UINT* pHeapRangeStartOffsets,
 					const UINT* pRangeTileCounts,
-					D3D12_TILE_MAPPING_FLAGS Flags);
+					D3D12_TILE_MAPPING_FLAGS Flags) override;
 
-		virtual void STDMETHODCALLTYPE CopyTileMappings(
+		void STDMETHODCALLTYPE CopyTileMappings(
 			ID3D12Resource* pDstResource,
 			const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate,
 			ID3D12Resource* pSrcResource,
 			const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate,
 			const D3D12_TILE_REGION_SIZE* pRegionSize,
-			D3D12_TILE_MAPPING_FLAGS Flags);
+			D3D12_TILE_MAPPING_FLAGS Flags) override;
 
-		virtual void STDMETHODCALLTYPE ExecuteCommandLists(
+		void STDMETHODCALLTYPE ExecuteCommandLists(
 			UINT NumCommandLists,
-			ID3D12CommandList* const* ppCommandLists);
+			ID3D12CommandList* const* ppCommandLists) override;
 
-		virtual void STDMETHODCALLTYPE SetMarker(
+		void STDMETHODCALLTYPE SetMarker(
 			UINT Metadata,
 			const void* pData,
-			UINT Size);
+			UINT Size) override;
 
-		virtual void STDMETHODCALLTYPE BeginEvent(
+		void STDMETHODCALLTYPE BeginEvent(
 			UINT Metadata,
 			const void* pData,
-			UINT Size);
+			UINT Size) override;
 
-		virtual void STDMETHODCALLTYPE EndEvent();
+		void STDMETHODCALLTYPE EndEvent() override;
 
-		virtual HRESULT STDMETHODCALLTYPE Signal(
+		HRESULT STDMETHODCALLTYPE Signal(
 			ID3D12Fence* pFence,
-			UINT64 Value);
+			UINT64 Value) override;
 
-		virtual HRESULT STDMETHODCALLTYPE Wait(
+		HRESULT STDMETHODCALLTYPE Wait(
 			ID3D12Fence* pFence,
-			UINT64 Value);
+			UINT64 Value) override;
 
-		virtual HRESULT STDMETHODCALLTYPE GetTimestampFrequency(
-			UINT64* pFrequency);
+		HRESULT STDMETHODCALLTYPE GetTimestampFrequency(UINT64* pFrequency) override;
 
-		virtual HRESULT STDMETHODCALLTYPE GetClockCalibration(
+		HRESULT STDMETHODCALLTYPE GetClockCalibration(
 			UINT64* pGpuTimestamp,
-			UINT64* pCpuTimestamp);
+			UINT64* pCpuTimestamp) override;
 
-		virtual D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE GetDesc();
+		D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE GetDesc() override;
 	};
 }
 

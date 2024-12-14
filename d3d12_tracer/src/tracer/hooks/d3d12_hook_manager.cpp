@@ -304,10 +304,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12GetDebugInterface(riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetDebugInterface");
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(riid, ppvDebug);
-			// }
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppvDebug);
+			}
         }
         return result;
     }
@@ -320,10 +320,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12GetInterface(rclsid, riid, ppvDebug);
             D3D12_WRAPPER_DEBUG("Invoke D3D12GetInterface");
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(riid, ppvDebug);
-			// }
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(riid, ppvDebug);
+			}
         }
         return result;
     }
@@ -333,25 +333,21 @@ namespace gfxshim
                                                         _In_ REFIID riid,
                                                         _COM_Outptr_opt_ void **ppDevice)
     {
-        HRESULT result = E_UNEXPECTED;
-        auto &&d3d12_dispatch_table = D3D12HookManager::GetInstance().QueryD3D12DispatchTable();
-        if (d3d12_dispatch_table.D3D12CreateDevice != nullptr)
-        {
-            result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
-            D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
-            if (ppDevice != nullptr && (*ppDevice != nullptr))
-            {
-                D3D12_WRAPPER_DEBUG("Real device pointer: {}", *ppDevice);
-            }
-			D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
+		HRESULT result = E_UNEXPECTED;
+		auto &&d3d12_dispatch_table = D3D12HookManager::GetInstance().QueryD3D12DispatchTable();
+		if (d3d12_dispatch_table.D3D12CreateDevice != nullptr)
+		{
+		    result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
+		    D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
+		    if (SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
+		    {
+				auto unwrapped_device = *ppDevice;
+				encode::WrapObject(riid, ppDevice);
+				D3D12_WRAPPER_DEBUG("Real device pointer: {}, wrapped device pointer: {}", unwrapped_device, *ppDevice);
+		    }
 			return result;
-			// result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(riid, ppDevice);
-			// }
-        }
-
+		}
+		// Old method
         if(SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
         {
             if(riid == __uuidof(ID3D12Device)   || riid == __uuidof(ID3D12Device2)  || riid == __uuidof(ID3D12Device3)  || riid == __uuidof(ID3D12Device4) ||
@@ -382,20 +378,16 @@ namespace gfxshim
         if (d3d12_dispatch_table.D3D12SerializeRootSignature != nullptr)
         {
             result = d3d12_dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
-            if (ppBlob != nullptr && (*ppBlob) != nullptr)
+			D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeRootSignature");
+            if (SUCCEEDED(result) && ppBlob != nullptr && (*ppBlob) != nullptr)
             {
                 auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
                 auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
                 d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
                 d3d12_hook_manager.StoreBlobToRootSignatureDescMapping(blob_pointer, pRootSignature);
+				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
+				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
             }
-            D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeRootSignature");
-			// result = d3d12_dispatch_table.D3D12SerializeRootSignature(pRootSignature, Version, ppBlob, ppErrorBlob);
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
-			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
-			// }
         }
         return result;
     }
@@ -410,20 +402,16 @@ namespace gfxshim
         if (d3d12_dispatch_table.D3D12SerializeVersionedRootSignature != nullptr)
         {
             result = d3d12_dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
-            if (ppBlob != nullptr && (*ppBlob) != nullptr)
+			D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeVersionedRootSignature");
+            if (SUCCEEDED(result) && ppBlob != nullptr && (*ppBlob) != nullptr)
             {
                 auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
                 auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
                 d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
                 d3d12_hook_manager.StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, pRootSignature);
+				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
+				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
             }
-            D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeVersionedRootSignature");
-			// result = d3d12_dispatch_table.D3D12SerializeVersionedRootSignature(pRootSignature, ppBlob, ppErrorBlob);
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
-			// 	encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
-			// }
         }
         return result;
     }
@@ -440,11 +428,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateRootSignatureDeserializer");
-			// result = d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
-			// }
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			}
         }
         return result;
     }
@@ -461,11 +448,10 @@ namespace gfxshim
         {
             result = d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
             D3D12_WRAPPER_DEBUG("Invoke D3D12CreateVersionedRootSignatureDeserializer");
-			// result = d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer(pSrcData, SrcDataSizeInBytes, pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
-			// if (SUCCEEDED(result))
-			// {
-			// 	encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
-			// }
+			if (SUCCEEDED(result))
+			{
+				encode::WrapObject(pRootSignatureDeserializerInterface, ppRootSignatureDeserializer);
+			}
         }
         return result;
     }

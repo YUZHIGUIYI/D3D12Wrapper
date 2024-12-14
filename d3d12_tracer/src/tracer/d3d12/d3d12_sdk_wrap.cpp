@@ -22,11 +22,67 @@ namespace gfxshim
 
 	// Wrap ID3D12SDKConfiguration1
 	ID3D12SDKConfiguration1Wrapper::ID3D12SDKConfiguration1Wrapper(const IID &riid, IUnknown *object)
-	: ID3D12SDKConfigurationWrapper(riid, object)
+	: m_riid(riid), m_object(object, false), m_ref_count(1)
 	{
 
 	}
 
+	// Helper functions
+	REFIID ID3D12SDKConfiguration1Wrapper::GetRiid() const
+	{
+		return m_riid;
+	}
+
+	IUnknown* ID3D12SDKConfiguration1Wrapper::GetWrappedObject()
+	{
+		return m_object;
+	}
+
+	const IUnknown* ID3D12SDKConfiguration1Wrapper::GetWrappedObject() const
+	{
+		return m_object;
+	}
+
+	uint32_t ID3D12SDKConfiguration1Wrapper::GetRefCount() const
+	{
+		return m_ref_count.load(std::memory_order_seq_cst);
+	}
+
+	// IUnknown
+	HRESULT STDMETHODCALLTYPE ID3D12SDKConfiguration1Wrapper::QueryInterface(REFIID riid, void** object)
+	{
+		// TODO: check wrap
+		const auto result = m_object->QueryInterface(riid, object);
+		if (FAILED(result) && IsEqualIID(riid, IID_IUnknown_Wrapper))
+		{
+			*object = GetWrappedObject();
+			return S_OK;
+		}
+		encode::WrapObject(riid, object);
+		D3D12_WRAPPER_DEBUG("Invoke ID3D12SDKConfiguration1Wrapper::QueryInterface, get wrapped object");
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE ID3D12SDKConfiguration1Wrapper::AddRef()
+	{
+		const auto result = ++m_ref_count;
+		return result;
+	}
+
+	ULONG STDMETHODCALLTYPE ID3D12SDKConfiguration1Wrapper::Release()
+	{
+		const auto result = --m_ref_count;
+		return result;
+	}
+
+	// ID3D12SDKConfiguration
+	HRESULT STDMETHODCALLTYPE ID3D12SDKConfiguration1Wrapper::SetSDKVersion(UINT SDKVersion, LPCSTR SDKPath)
+	{
+		const auto result = GetWrappedObjectAs<ID3D12SDKConfiguration>()->SetSDKVersion(SDKVersion, SDKPath);
+		return result;
+	}
+
+	// ID3D12SDKConfiguration1
 	HRESULT STDMETHODCALLTYPE ID3D12SDKConfiguration1Wrapper::CreateDeviceFactory(UINT SDKVersion, LPCSTR SDKPath, const IID &riid, void **ppvFactory)
 	{
 		const auto result = GetWrappedObjectAs<ID3D12SDKConfiguration1>()->CreateDeviceFactory(SDKVersion, SDKPath, riid, ppvFactory);
