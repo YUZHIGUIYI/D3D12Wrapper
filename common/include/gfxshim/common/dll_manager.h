@@ -33,7 +33,48 @@ namespace gfxshim
 	bool DLLManager<DispatchTableType>::Initialize(const std::string_view system_library_path, const std::string_view tracer_library_path,
 													const std::string_view initialize_func_name, LoadLibraryStrategy load_library_strategy)
 	{
-		system_dll = LoadLibraryA(system_library_path.data());
+		auto roaming_path = std::getenv("APPDATA");
+		std::string redirect_library_path{};
+		if (roaming_path != nullptr)
+		{
+			std::string dll_user_target = std::string{ roaming_path } + "\\" + std::string{ "gfxshim" };
+			std::string dll_runtime_target = dll_user_target + "\\" + std::string{ "dx-runtimes" };
+			if (!std::filesystem::exists(dll_user_target))
+			{
+				std::filesystem::create_directory(dll_user_target);
+			}
+			if (!std::filesystem::exists(dll_runtime_target))
+			{
+				std::filesystem::create_directory(dll_runtime_target);
+			}
+			std::string rename_library_path = std::string{ system_library_path };
+			auto dot_pos = rename_library_path.find_last_of('.');
+			auto back_slash_pos = rename_library_path.find_last_of('\\');
+			if (dot_pos == std::string::npos || back_slash_pos == std::string::npos)
+			{
+				return false;
+			}
+			auto system_library_directory = rename_library_path.substr(0, back_slash_pos);
+			rename_library_path = dll_runtime_target + "\\"  + rename_library_path.substr(back_slash_pos + 1, dot_pos - back_slash_pos - 1) + "_ms.dll";
+			if (!std::filesystem::exists(rename_library_path))
+			{
+				if (!std::filesystem::copy_file(system_library_path, rename_library_path))
+				{
+					return false;
+				}
+			}
+			auto redirect_core_library_path = dll_runtime_target + "\\D3D12Core.dll";
+			auto system_core_library_path = system_library_directory + "\\D3D12Core.dll";
+			if (!std::filesystem::exists(redirect_core_library_path))
+			{
+				if (!std::filesystem::copy_file(system_core_library_path, redirect_core_library_path))
+				{
+					return false;
+				}
+			}
+			redirect_library_path = rename_library_path;
+		}
+		system_dll = LoadLibraryA(redirect_library_path.data());
 		if (!system_dll)
 		{
 			return false;

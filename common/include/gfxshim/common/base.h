@@ -21,6 +21,7 @@
 #include <mutex>
 #include <type_traits>
 #include <concepts>
+#include <filesystem>
 #include <wrl/client.h>
 
 #if defined(__GNUC__) || defined(__clang__)

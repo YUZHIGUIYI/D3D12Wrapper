@@ -9,49 +9,11 @@
 #include <tracer/d3d12/d3d12_device_wrap.h>
 #include <tracer/hooks/d3d12_hook_manager.h>
 
-#include "tracer/dxgi/dxgi_wrappers.h"
-
 namespace gfxshim
 {
     D3D12HookManager::D3D12HookManager()
     : resource_manager_impl(std::make_unique<ResourceManagerImpl>())
     {
-        // char system_directory[MAX_PATH];
-        // if (const uint32_t result = GetSystemDirectory(system_directory, MAX_PATH); result == 0)
-        // {
-        //     D3D12_WRAPPER_ERROR("Failed to retrieve system directory");
-        //     return;
-        // }
-        //
-        // std::string core_lib_directory{ system_directory };
-        // d3d12_module = LoadLibraryA((core_lib_directory + "\\d3d12.dll").c_str());
-        // if (d3d12_module == nullptr)
-        // {
-        //     D3D12_WRAPPER_ERROR("Failed to load d3d12.dll from system path");
-        //     return;
-        // }
-        //
-        // d3d12_dispatch_table.D3D12GetDebugInterface = reinterpret_cast<PFN_D3D12_GET_DEBUG_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
-        // d3d12_dispatch_table.D3D12GetInterface = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(GetProcAddress(d3d12_module, "D3D12GetInterface"));
-        // d3d12_dispatch_table.D3D12CreateDevice = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
-        // d3d12_dispatch_table.D3D12SerializeRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeRootSignature"));
-        // d3d12_dispatch_table.D3D12SerializeVersionedRootSignature = reinterpret_cast<PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE>(GetProcAddress(d3d12_module, "D3D12SerializeVersionedRootSignature"));
-        // d3d12_dispatch_table.D3D12CreateRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateRootSignatureDeserializer"));
-        // d3d12_dispatch_table.D3D12CreateVersionedRootSignatureDeserializer = reinterpret_cast<PFN_D3D12_CREATE_VERSIONED_ROOT_SIGNATURE_DESERIALIZER>(GetProcAddress(d3d12_module, "D3D12CreateVersionedRootSignatureDeserializer"));
-        // d3d12_dispatch_table.D3D12EnableExperimentalFeatures = reinterpret_cast<D3D12DispatchTable::PFN_D3D12_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(d3d12_module, "D3D12EnableExperimentalFeatures"));
-        //
-        // dxgi_module = LoadLibraryA((core_lib_directory + "\\dxgi.dll").c_str());
-        // if (dxgi_module == nullptr)
-        // {
-        //     D3D12_WRAPPER_ERROR("Failed to load dxgi.dll from system path");
-        //     return;
-        // }
-        // dxgi_dispatch_table.DXGICreateFactory = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY>(GetProcAddress(dxgi_module, "CreateDXGIFactory"));
-        // dxgi_dispatch_table.DXGICreateFactory1 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY1>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
-        // dxgi_dispatch_table.DXGICreateFactory2 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_CREATE_FACTORY2>(GetProcAddress(dxgi_module, "CreateDXGIFactory2"));
-        // dxgi_dispatch_table.DXGIGetDebugInterface1 = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_GET_DEBUG_INTERFACE1>(GetProcAddress(dxgi_module, "DXGIGetDebugInterface1"));
-        // dxgi_dispatch_table.DXGIDeclareAdapterRemovalSupport = reinterpret_cast<DXGIDispatchTable::PFN_DXGI_DECLARE_ADAPTER_REMOVAL_SUPPORT>(GetProcAddress(dxgi_module, "DXGIDeclareAdapterRemovalSupport"));
-
         AllocConsole();
         freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
         D3D12_WRAPPER_DEBUG("Initialized D3D12 hook manager successfully");
@@ -59,11 +21,6 @@ namespace gfxshim
 
     D3D12HookManager::~D3D12HookManager()
     {
-        // if (d3d12_module)
-        // {
-        //     FreeLibrary(d3d12_module);
-        //     d3d12_dispatch_table = {};
-        // }
         for (auto &&wrapped_resource_pair : wrapped_resource_storage)
         {
             DestroyResource(wrapped_resource_pair.second);
@@ -381,10 +338,10 @@ namespace gfxshim
 			D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeRootSignature");
             if (SUCCEEDED(result) && ppBlob != nullptr && (*ppBlob) != nullptr)
             {
-                auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
-                auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
-                d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
-                d3d12_hook_manager.StoreBlobToRootSignatureDescMapping(blob_pointer, pRootSignature);
+				auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
+				auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
+				d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
+				d3d12_hook_manager.StoreBlobToRootSignatureDescMapping(blob_pointer, pRootSignature);
 				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
 				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
             }
@@ -405,10 +362,10 @@ namespace gfxshim
 			D3D12_WRAPPER_DEBUG("Invoke D3D12SerializeVersionedRootSignature");
             if (SUCCEEDED(result) && ppBlob != nullptr && (*ppBlob) != nullptr)
             {
-                auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
-                auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
-                d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
-                d3d12_hook_manager.StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, pRootSignature);
+				auto &&d3d12_hook_manager = D3D12HookManager::GetInstance();
+				auto blob_pointer = reinterpret_cast<uint64_t>((*ppBlob)->GetBufferPointer());
+				d3d12_hook_manager.UpdateBlobToRootSignatureMapping(blob_pointer, nullptr);
+				d3d12_hook_manager.StoreBlobToVersionedRootSignatureDescMapping(blob_pointer, pRootSignature);
 				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppBlob));
 				encode::WrapObject(__uuidof(ID3D10Blob), reinterpret_cast<void **>(ppErrorBlob));
             }

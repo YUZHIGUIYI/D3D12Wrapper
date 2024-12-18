@@ -6,7 +6,7 @@
 #include <gfxshim/common/d3d12_dispatch_table.h>
 
 constexpr std::string_view s_tracer_dll_path = "d3d12_tracer.dll";
-constexpr std::string_view s_system_dll_path = "C:/Windows/System32/d3d12.dll";
+constexpr std::string_view s_system_dll_path = "C:\\Windows\\System32\\d3d12.dll";
 constexpr std::string_view s_dll_initialize_func_name = "InjectD3D12Tracer";
 constexpr std::string_view s_dll_release_func_name = "ReleaseD3D12Tracer";
 

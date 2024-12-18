@@ -115,6 +115,10 @@ namespace gfxshim
 			*object = GetWrappedObject();
 			return S_OK;
 		}
+		if (SUCCEEDED(result) && (IsEqualGUID(riid, __uuidof(IUnknown)) || IsEqualGUID(riid, m_riid)))
+		{
+			return S_OK;
+		}
 		encode::WrapObject(riid, object);
 		D3D12_WRAPPER_DEBUG("Invoke ID3D12Resource2Wrapper::QueryInterface, get wrapped object");
 		return result;

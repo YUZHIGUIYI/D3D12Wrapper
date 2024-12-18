@@ -6,7 +6,7 @@
 #include <gfxshim/common/dxgi_dispatch_table.h>
 
 constexpr std::string_view s_tracer_dll_path = "d3d12_tracer.dll";
-constexpr std::string_view s_system_dll_path = "C:/Windows/System32/dxgi.dll";
+constexpr std::string_view s_system_dll_path = "C:\\Windows\\System32\\dxgi.dll";
 constexpr std::string_view s_dll_initialize_func_name = "InjectDXGITracer";
 constexpr std::string_view s_dll_release_func_name = "ReleaseDXGITracer";
 

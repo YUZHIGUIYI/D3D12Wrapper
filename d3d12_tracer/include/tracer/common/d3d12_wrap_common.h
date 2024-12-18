@@ -156,32 +156,6 @@
 			return nullptr;
 		}
 
-		// template <>
-		// inline IUnknown *GetWrappedObject<IUnknown>(IUnknown *wrapped_object)
-		// {
-		// 	IUnknown *object = wrapped_object;
-		// 	IUnknownWrapper *wrapper = nullptr;
-		// 	if (object != nullptr &&
-		// 		SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
-		// 	{
-		// 		object = wrapper->GetWrappedObject();
-		// 	}
-		// 	return object;
-		// }
-		//
-		// template <>
-		// inline const IUnknown *GetWrappedObject<IUnknown>(const IUnknown *wrapped_object)
-		// {
-		// 	auto *object = const_cast<IUnknown *>(wrapped_object);
-		// 	IUnknownWrapper *wrapper = nullptr;
-		// 	if (object != nullptr &&
-		// 		SUCCEEDED(object->QueryInterface(IID_IUnknown_Wrapper, reinterpret_cast<void **>(&wrapper))))
-		// 	{
-		// 		object = wrapper->GetWrappedObject();
-		// 	}
-		// 	return object;
-		// }
-
 		void UnwrapStructObjects(std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
 
 		void UnwrapStructObjects(D3D12_STATE_SUBOBJECT &unwrapped_sub_object, std::vector<D3D12_STATE_SUBOBJECT> &unwrapped_sub_objects, std::span<const D3D12_STATE_SUBOBJECT> wrapped_sub_objects);
