@@ -8,16 +8,6 @@
 
 namespace gfxshim
 {
-	struct ID3D12HeapWrapper : ID3D12PageableWrapper
-	{
-	public:
-		ID3D12HeapWrapper(REFIID riid, IUnknown *object);
-
-		~ID3D12HeapWrapper() override = default;
-
-		virtual D3D12_HEAP_DESC STDMETHODCALLTYPE GetDesc();
-	};
-
 	// New wrapped ID3D12Heap1
 	struct ID3D12Heap1Wrapper final : ID3D12Heap1
 	{

@@ -8,51 +8,9 @@
 
 namespace gfxshim
 {
-	struct ID3D12PipelineLibraryWrapper : ID3D12DeviceChildWrapper
-	{
-	public:
-		ID3D12PipelineLibraryWrapper(REFIID riid, IUnknown *object);
-
-		~ID3D12PipelineLibraryWrapper() override = default;
-
-		virtual HRESULT STDMETHODCALLTYPE StorePipeline(LPCWSTR pName, ID3D12PipelineState *pPipeline);
-
-		virtual HRESULT STDMETHODCALLTYPE LoadGraphicsPipeline(
-						LPCWSTR pName,
-						const D3D12_GRAPHICS_PIPELINE_STATE_DESC* pDesc,
-						REFIID riid,
-						void** ppPipelineState);
-
-		virtual HRESULT STDMETHODCALLTYPE LoadComputePipeline(
-						LPCWSTR pName,
-						const D3D12_COMPUTE_PIPELINE_STATE_DESC* pDesc,
-						REFIID riid,
-						void** ppPipelineState);
-
-		virtual SIZE_T STDMETHODCALLTYPE GetSerializedSize();
-
-		virtual HRESULT STDMETHODCALLTYPE Serialize(
-						void* pData,
-						SIZE_T DataSizeInBytes);
-	};
-
-	// struct ID3D12PipelineLibrary1Wrapper : ID3D12PipelineLibraryWrapper
-	// {
-	// public:
-	// 	ID3D12PipelineLibrary1Wrapper(REFIID riid, IUnknown *object);
-	//
-	// 	~ID3D12PipelineLibrary1Wrapper() override = default;
-	//
-	// 	virtual HRESULT STDMETHODCALLTYPE LoadPipeline(
-	// 					LPCWSTR pName,
-	// 					const D3D12_PIPELINE_STATE_STREAM_DESC* pDesc,
-	// 					REFIID riid,
-	// 					void** ppPipelineState);
-	// };
-
 	struct ID3D12PipelineLibrary1Wrapper final : ID3D12PipelineLibrary1
 	{
-		private:
+	private:
 		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
 		IID m_riid;
 		IUnknownPtr m_object;

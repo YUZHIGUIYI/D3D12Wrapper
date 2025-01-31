@@ -8,7 +8,8 @@
 #include <tracer/common/logger.h>
 #include <comip.h>
 
-
+namespace gfxshim
+{
 	template <typename T>
 	struct alignas(void *) Dx12SubObjectType
 	{
@@ -34,33 +35,33 @@
 	using Dx12DepthStencil1SubObject       = Dx12SubObjectType<D3D12_DEPTH_STENCIL_DESC1>;
 	using Dx12ViewInstancingSubObject      = Dx12SubObjectType<D3D12_VIEW_INSTANCING_DESC>;
 
-    constexpr IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
+	constexpr IID IID_IUnknown_Wrapper = { 0xe00bb2cc, 0x162e, 0x4aad, { 0x97, 0x69, 0xed, 0xe6, 0x91, 0x53, 0x95, 0xf6 } };
 	constexpr IID IID_Device_11_On_12 = { 0x77ACCE80, 0x638E, 0x4E65, { 0x88, 0x95, 0xC1, 0xF2, 0x33, 0x86, 0x86, 0x3E } };
 	constexpr IID IID_Queue_11_On_12 = { 0x0EC870A6, 0x5D7E, 0x4C22, { 0x8C, 0xFC, 0x5B, 0xAA, 0xE0, 0x76, 0x16, 0xED } };
 
-    MIDL_INTERFACE("E00BB2CC-162E-4AAD-9769-EDE6915395F6")
-    IUnknownWrapper : IUnknown
-    {
-    public:
-        IUnknownWrapper(REFIID riid, IUnknown *wrapper_object);
+	MIDL_INTERFACE("E00BB2CC-162E-4AAD-9769-EDE6915395F6")
+	IUnknownWrapper : IUnknown
+	{
+		public:
+		IUnknownWrapper(REFIID riid, IUnknown *wrapper_object);
 
-        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
+		HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override;
 
-        ULONG STDMETHODCALLTYPE AddRef() override;
+		ULONG STDMETHODCALLTYPE AddRef() override;
 
-        ULONG STDMETHODCALLTYPE Release() override;
+		ULONG STDMETHODCALLTYPE Release() override;
 
-        REFIID GetRiid() const;
+		REFIID GetRiid() const;
 
-        IUnknown *GetWrappedObject();
+		IUnknown *GetWrappedObject();
 
-        const IUnknown *GetWrappedObject() const;
+		const IUnknown *GetWrappedObject() const;
 
-        template <typename T>
-        T *GetWrappedObjectAs()
-        {
-            return reinterpret_cast<T *>(m_object.GetInterfacePtr());
-        }
+		template <typename T>
+		T *GetWrappedObjectAs()
+		{
+			return reinterpret_cast<T *>(m_object.GetInterfacePtr());
+		}
 
 		template <typename T>
 		const T *GetWrappedObjectAs() const
@@ -68,56 +69,17 @@
 			return reinterpret_cast<const T *>(m_object.GetInterfacePtr());
 		}
 
-        uint32_t GetRefCount() const;
+		uint32_t GetRefCount() const;
 
-        virtual ~IUnknownWrapper();
+		virtual ~IUnknownWrapper();
 
-    private:
+		private:
 		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
-        IID m_riid;
-        IUnknownPtr m_object;
-        std::atomic_uint32_t m_ref_count;
-    };
-
-    struct ID3D12ObjectWrapper : IUnknownWrapper
-    {
-    public:
-        ID3D12ObjectWrapper(REFIID riid, IUnknown *object);
-
-        virtual HRESULT STDMETHODCALLTYPE GetPrivateData(
-                _In_  REFGUID guid,
-                _Inout_  UINT* pDataSize,
-                _Out_writes_bytes_opt_(*pDataSize)  void* pData);
-
-        virtual HRESULT STDMETHODCALLTYPE SetPrivateData(
-                _In_  REFGUID guid,
-                _In_  UINT DataSize,
-                _In_reads_bytes_opt_(DataSize)  const void* pData);
-
-        virtual HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
-                _In_  REFGUID guid,
-                _In_opt_  const IUnknown* pData);
-
-        virtual HRESULT STDMETHODCALLTYPE SetName(
-                _In_z_  LPCWSTR Name);
-    };
-
-    struct ID3D12DeviceChildWrapper : ID3D12ObjectWrapper
-    {
-    public:
-        ID3D12DeviceChildWrapper(REFIID riid, IUnknown *object);
-
-        virtual HRESULT STDMETHODCALLTYPE GetDevice(
-                REFIID riid,
-                void** ppvDevice);
-    };
-
-    struct ID3D12PageableWrapper : ID3D12DeviceChildWrapper
-    {
-    public:
-        ID3D12PageableWrapper(REFIID riid, IUnknown *object);
-    };
-
+		IID m_riid;
+		IUnknownPtr m_object;
+		std::atomic_uint32_t m_ref_count;
+	};
+}
     namespace gfxshim::encode
     {
 		template <typename T>

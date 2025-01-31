@@ -7,19 +7,6 @@
 
 namespace gfxshim
 {
-	// Wrap ID3D12Heap
-	ID3D12HeapWrapper::ID3D12HeapWrapper(const IID &riid, IUnknown *object)
-	: ID3D12PageableWrapper(riid, object)
-	{
-
-	}
-
-	D3D12_HEAP_DESC STDMETHODCALLTYPE ID3D12HeapWrapper::GetDesc()
-	{
-		const auto result = GetWrappedObjectAs<ID3D12Heap>()->GetDesc();
-		return result;
-	}
-
 	// Wrap ID3D12Heap1
 	ID3D12Heap1Wrapper::ID3D12Heap1Wrapper(const IID &riid, IUnknown *object)
 	: m_riid(riid), m_object(object, false), m_ref_count(1)

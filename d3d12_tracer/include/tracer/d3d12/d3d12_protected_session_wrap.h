@@ -8,28 +8,6 @@
 
 namespace gfxshim
 {
-	struct ID3D12ProtectedSessionWrapper : ID3D12DeviceChildWrapper
-	{
-	public:
-		ID3D12ProtectedSessionWrapper(REFIID riid, IUnknown *object);
-
-		~ID3D12ProtectedSessionWrapper() override = default;
-
-		virtual HRESULT STDMETHODCALLTYPE GetStatusFence(REFIID riid, void** ppFence);
-
-		virtual D3D12_PROTECTED_SESSION_STATUS STDMETHODCALLTYPE GetSessionStatus();
-	};
-
-	struct ID3D12ProtectedResourceSessionWrapper : ID3D12ProtectedSessionWrapper
-	{
-	public:
-		ID3D12ProtectedResourceSessionWrapper(REFIID riid, IUnknown *object);
-
-		~ID3D12ProtectedResourceSessionWrapper() override = default;
-
-		virtual D3D12_PROTECTED_RESOURCE_SESSION_DESC STDMETHODCALLTYPE GetDesc();
-	};
-
 	struct ID3D12ProtectedResourceSession1Wrapper final : ID3D12ProtectedResourceSession1
 	{
 	private:
