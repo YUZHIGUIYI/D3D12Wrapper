@@ -7,7 +7,7 @@
 namespace gfxshim
 {
 	ID3D12CommandQueueWrapper::ID3D12CommandQueueWrapper(const IID &riid, IUnknown *object)
-	: m_riid(riid), m_object(object, false), m_ref_count(1)
+	: m_riid(riid), m_object(object, false), m_ref_count(1), m_signal_queue_finish(false)
 	{
 
 	}
@@ -126,12 +126,21 @@ namespace gfxshim
 
 	void STDMETHODCALLTYPE ID3D12CommandQueueWrapper::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList *const *ppCommandLists)
 	{
+		// TODO: check ID3D12CommandList -> ID3D12GraphicsCommandList
+		if (m_signal_queue_finish)
+		{
+			m_cur_command_lists.clear();
+			m_signal_queue_finish.store(false, std::memory_order_release);
+		}
 		if (NumCommandLists > 0U && ppCommandLists != nullptr)
 		{
+			ComPtr<ID3D12GraphicsCommandList> wrapped_command_list = nullptr;
 			std::vector<ID3D12CommandList *> unwrap_command_lists(NumCommandLists);
 			for (uint32_t i = 0U; i < NumCommandLists; ++i)
 			{
 				unwrap_command_lists[i] = encode::GetWrappedObject<ID3D12CommandList>(ppCommandLists[i]);
+				ppCommandLists[i]->QueryInterface(__uuidof(ID3D12GraphicsCommandList), reinterpret_cast<void **>(wrapped_command_list.ReleaseAndGetAddressOf()));
+				m_cur_command_lists.emplace_back(wrapped_command_list.Get());
 			}
 			return GetWrappedObjectAs<ID3D12CommandQueue>()->ExecuteCommandLists(NumCommandLists, unwrap_command_lists.data());
 		}
@@ -156,6 +165,12 @@ namespace gfxshim
 	HRESULT STDMETHODCALLTYPE ID3D12CommandQueueWrapper::Signal(ID3D12Fence *pFence, UINT64 Value)
 	{
 		const auto result = GetWrappedObjectAs<ID3D12CommandQueue>()->Signal(encode::GetWrappedObject<ID3D12Fence>(pFence), Value);
+		if (SUCCEEDED(result) && !m_cur_command_lists.empty())
+		{
+			// TODO: test deferred per-draw-dump and deferred per-dispatch-dump and immediate dds-dumping or bin-dumping
+			D3D12HookManager::GetInstance().PerDrawAndDispatchDump(m_cur_command_lists, pFence, Value);
+			m_signal_queue_finish.store(true, std::memory_order_release);
+		}
 		return result;
 	}
 

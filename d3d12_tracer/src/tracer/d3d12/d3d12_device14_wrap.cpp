@@ -4,6 +4,7 @@
 
 #include <tracer/d3d12/d3d12_device14_wrap.h>
 #include <tracer/core/wrapper_creators.h>
+#include <tracer/hooks/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
@@ -174,6 +175,16 @@ namespace gfxshim
 		{
 		    encode::WrapObject(riid, ppCommandList);
 		}
+		if (SUCCEEDED(result) && ppCommandList != nullptr && (*ppCommandList != nullptr))
+		{
+			if (riid == __uuidof(ID3D12GraphicsCommandList)  || riid == __uuidof(ID3D12GraphicsCommandList1)  || riid == __uuidof(ID3D12GraphicsCommandList2) ||
+				riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4)  || riid == __uuidof(ID3D12GraphicsCommandList5) ||
+				riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7)  || riid == __uuidof(ID3D12GraphicsCommandList8) ||
+			    riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10) || riid == __uuidof(ID3D12CommandList))
+			{
+				D3D12HookManager::GetInstance().RegisterCommandListTracer(static_cast<ID3D12GraphicsCommandList *>(*ppCommandList));
+			}
+		}
 		return result;
     }
 
@@ -218,6 +229,10 @@ namespace gfxshim
 		{
 		    encode::WrapObject(riid, ppvRootSignature);
 		}
+		if (SUCCEEDED(result) && pBlobWithRootSignature != nullptr && ppvRootSignature != nullptr && (*ppvRootSignature) != nullptr)
+		{
+			D3D12HookManager::GetInstance().UpdateBlobToRootSignatureMapping(reinterpret_cast<uint64_t>(pBlobWithRootSignature), static_cast<ID3D12RootSignature *>(*ppvRootSignature));
+		}
 		return result;
     }
 
@@ -244,6 +259,11 @@ namespace gfxshim
     {
 		GetWrappedObjectAs<ID3D12Device>()->CreateUnorderedAccessView(encode::GetWrappedObject<ID3D12Resource>(pResource), encode::GetWrappedObject<ID3D12Resource>(pCounterResource),
 																	pDesc, DestDescriptor);
+		if (pResource != nullptr && pDesc != nullptr)
+		{
+			D3D12HookManager::GetInstance().StoreUAVAndResource(DestDescriptor.ptr, pResource, pDesc);
+			D3D12_WRAPPER_DEBUG("Create unordered access view, resource: {}, uav: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12Device14Wrapper::CreateRenderTargetView(
@@ -252,6 +272,15 @@ namespace gfxshim
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
         GetWrappedObjectAs<ID3D12Device>()->CreateRenderTargetView(encode::GetWrappedObject<ID3D12Resource>(pResource), pDesc, DestDescriptor);
+		if (pResource != nullptr && pDesc != nullptr)
+		{
+			D3D12HookManager::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, pDesc);
+			D3D12_WRAPPER_DEBUG("Create render target view, resource: {}, rtv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+		} else if (pDesc == nullptr)
+		{
+			D3D12HookManager::GetInstance().StoreRTVAndResource(DestDescriptor.ptr, pResource, nullptr);
+			D3D12_WRAPPER_WARN("Create render target view while using null rtv desc");
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12Device14Wrapper::CreateDepthStencilView(
@@ -260,6 +289,11 @@ namespace gfxshim
             D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
     {
         GetWrappedObjectAs<ID3D12Device>()->CreateDepthStencilView(encode::GetWrappedObject<ID3D12Resource>(pResource), pDesc, DestDescriptor);
+		if (pResource != nullptr && pDesc != nullptr)
+		{
+			D3D12HookManager::GetInstance().StoreDSVAndResource(DestDescriptor.ptr, pResource, pDesc);
+			D3D12_WRAPPER_DEBUG("Create depth stencil view, resource: {}, dsv: {}, dimension: {}", reinterpret_cast<void *>(pResource), DestDescriptor.ptr, static_cast<uint32_t>(pDesc->ViewDimension));
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12Device14Wrapper::CreateSampler(
@@ -321,6 +355,13 @@ namespace gfxshim
 		if (SUCCEEDED(result))
 		{
 		    encode::WrapObject(riidResource, ppvResource);
+		}
+		if (SUCCEEDED(result) && pDesc != nullptr && ppvResource != nullptr && (*ppvResource) != nullptr)
+		{
+			if (pDesc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && (pDesc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0)
+			{
+				D3D12HookManager::GetInstance().StoreRootBufferMapping(static_cast<ID3D12Resource *>(*ppvResource));
+			}
 		}
 		return result;
     }
@@ -499,6 +540,10 @@ namespace gfxshim
 		if (SUCCEEDED(result))
 		{
 		    encode::WrapObject(riid, ppvCommandSignature);
+		}
+		if (SUCCEEDED(result) && pDesc != nullptr && ppvCommandSignature != nullptr && (*ppvCommandSignature) != nullptr)
+		{
+			D3D12HookManager::GetInstance().StoreCommandSignature(reinterpret_cast<uint64_t>(*ppvCommandSignature), pDesc);
 		}
 		return result;
     }
@@ -748,6 +793,16 @@ namespace gfxshim
 		{
 			encode::WrapObject(riid, ppCommandList);
 		}
+		if (SUCCEEDED(result) && ppCommandList != nullptr && (*ppCommandList != nullptr))
+		{
+			if (riid == __uuidof(ID3D12GraphicsCommandList)  || riid == __uuidof(ID3D12GraphicsCommandList1)  || riid == __uuidof(ID3D12GraphicsCommandList2) ||
+				riid == __uuidof(ID3D12GraphicsCommandList3) || riid == __uuidof(ID3D12GraphicsCommandList4)  || riid == __uuidof(ID3D12GraphicsCommandList5) ||
+				riid == __uuidof(ID3D12GraphicsCommandList6) || riid == __uuidof(ID3D12GraphicsCommandList7)  || riid == __uuidof(ID3D12GraphicsCommandList8) ||
+				riid == __uuidof(ID3D12GraphicsCommandList9) || riid == __uuidof(ID3D12GraphicsCommandList10) || riid == __uuidof(ID3D12CommandList))
+			{
+				D3D12HookManager::GetInstance().RegisterCommandListTracer(static_cast<ID3D12GraphicsCommandList *>(*ppCommandList));
+			}
+		}
 		return result;
     }
 
@@ -781,6 +836,13 @@ namespace gfxshim
 		if (SUCCEEDED(result))
 		{
 			encode::WrapObject(riidResource, ppvResource);
+		}
+		if (SUCCEEDED(result) && pDesc != nullptr && ppvResource != nullptr && (*ppvResource) != nullptr)
+		{
+			if (pDesc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER && (pDesc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0)
+			{
+				D3D12HookManager::GetInstance().StoreRootBufferMapping(static_cast<ID3D12Resource *>(*ppvResource));
+			}
 		}
 		return result;
     }

@@ -5,6 +5,7 @@
 #include <tracer/d3d12/d3d12_command_list_wrap.h>
 #include <tracer/d3d12/d3d12_command_list10_wrap.h>
 #include <tracer/core/wrapper_creators.h>
+#include <tracer/hooks/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
@@ -136,7 +137,13 @@ namespace gfxshim
             UINT StartInstanceLocation)
     {
 		// TODO: trim draw
+		ComPtr<ID3D12Device> wrapped_device = nullptr;
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawInstanced(VertexCountPerInstance, InstanceCount, StartInstanceLocation, StartInstanceLocation);
+		if (const auto result = GetDevice(__uuidof(ID3D12Device), reinterpret_cast<void **>(wrapped_device.GetAddressOf()));
+			SUCCEEDED(result))
+		{
+			D3D12HookManager::GetInstance().CollectStagingResourcePerDraw(wrapped_device.Get(), this);  // TODO: test deferred per-draw-dump
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::DrawIndexedInstanced(
@@ -147,8 +154,14 @@ namespace gfxshim
             UINT StartInstanceLocation)
     {
 		// TODO: trim draw
+		ComPtr<ID3D12Device> wrapped_device = nullptr;
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartInstanceLocation,
                                                                                 BaseVertexLocation, StartInstanceLocation);
+		if (const auto result = GetDevice(__uuidof(ID3D12Device), reinterpret_cast<void **>(wrapped_device.GetAddressOf()));
+			SUCCEEDED(result))
+		{
+			D3D12HookManager::GetInstance().CollectStagingResourcePerDraw(wrapped_device.Get(), this);  // TODO: test deferred per-draw-dump
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::Dispatch(
@@ -157,7 +170,13 @@ namespace gfxshim
             UINT ThreadGroupCountZ)
     {
 		// TODO: trim dispatch
+		ComPtr<ID3D12Device> wrapped_device = nullptr;
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+		if (const auto result = GetDevice(__uuidof(ID3D12Device), reinterpret_cast<void **>(wrapped_device.GetAddressOf()));
+			SUCCEEDED(result))
+		{
+			D3D12HookManager::GetInstance().CollectStagingResourcePerDispatch(wrapped_device.Get(), this);  // TODO: test deferred per-dispatch-dump
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::CopyBufferRegion(
@@ -289,13 +308,20 @@ namespace gfxshim
             ID3D12GraphicsCommandList* pCommandList)
     {
         // TODO: check
+		ComPtr<ID3D12Device> wrapped_device = nullptr;
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteBundle(encode::GetWrappedObject<ID3D12GraphicsCommandList>(pCommandList));
+		if (const auto result = GetDevice(__uuidof(ID3D12Device), reinterpret_cast<void **>(wrapped_device.GetAddressOf()));
+			SUCCEEDED(result))
+		{
+			D3D12HookManager::GetInstance().CollectStagingResourcePerBundle(wrapped_device.Get(), this, pCommandList);
+		}
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::SetDescriptorHeaps(
             UINT NumDescriptorHeaps,
             ID3D12DescriptorHeap* const* ppDescriptorHeaps)
     {
+		D3D12HookManager::GetInstance().ResetDescriptorHeaps(this, NumDescriptorHeaps, ppDescriptorHeaps);
 		if (NumDescriptorHeaps > 0U && ppDescriptorHeaps != nullptr)
 		{
 			std::vector<ID3D12DescriptorHeap *> unwrap_heaps(NumDescriptorHeaps);
@@ -312,6 +338,7 @@ namespace gfxshim
             ID3D12RootSignature* pRootSignature)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootSignature(encode::GetWrappedObject<ID3D12RootSignature>(pRootSignature));
+		D3D12HookManager::GetInstance().ResetComputePipelineRootSignature(this, pRootSignature);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::SetGraphicsRootSignature(
@@ -325,6 +352,7 @@ namespace gfxshim
             D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+		D3D12HookManager::GetInstance().UpdateUAVStatePerDispatch(this, RootParameterIndex, BaseDescriptor.ptr);  // TODO: enable uav test
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::SetGraphicsRootDescriptorTable(
@@ -401,6 +429,7 @@ namespace gfxshim
             D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetComputeRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+		D3D12HookManager::GetInstance().UpdateUAVStatePerDispatch(this, BufferLocation);  // TODO: enable uav test
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::SetGraphicsRootUnorderedAccessView(
@@ -408,6 +437,7 @@ namespace gfxshim
             D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+		D3D12HookManager::GetInstance().UpdateUAVStatePerDraw(this, BufferLocation);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::IASetIndexBuffer(
@@ -439,6 +469,7 @@ namespace gfxshim
             const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor)
     {
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->OMSetRenderTargets(NumRenderTargetDescriptors, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
+		D3D12HookManager::GetInstance().UpdateRTVAndDSVStatesPerDraw(this, NumRenderTargetDescriptors, pRenderTargetDescriptors, pDepthStencilDescriptor);
     }
 
     void STDMETHODCALLTYPE ID3D12GraphicsCommandList10Wrapper::ClearDepthStencilView(
@@ -557,8 +588,13 @@ namespace gfxshim
             ID3D12Resource* pCountBuffer,
             UINT64 CountBufferOffset)
     {
+		ComPtr<ID3D12Device> wrapped_device = nullptr;
         GetWrappedObjectAs<ID3D12GraphicsCommandList>()->ExecuteIndirect(encode::GetWrappedObject<ID3D12CommandSignature>(pCommandSignature), MaxCommandCount, encode::GetWrappedObject<ID3D12Resource>(pArgumentBuffer),
                                                                             ArgumentBufferOffset, encode::GetWrappedObject<ID3D12Resource>(pCountBuffer), CountBufferOffset);
+		if (const auto result = GetDevice(__uuidof(ID3D12Device), reinterpret_cast<void **>(wrapped_device.GetAddressOf())); SUCCEEDED(result))
+		{
+			D3D12HookManager::GetInstance().CollectStagingResourcePerIndirect(wrapped_device.Get(), this, reinterpret_cast<uint64_t>(pCommandSignature));  // TODO: test deferred per-execute-indirect-dump
+		}
     }
 
 	// ID3D12GraphicsCommandList1

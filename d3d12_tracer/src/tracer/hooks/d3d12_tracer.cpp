@@ -133,7 +133,7 @@ namespace gfxshim
                 is_cube_map = true;
             }
         }
-        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, valid_rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET,is_cube_map };
+        render_target_view_info_storage[rtv_descriptor] = RenderTargetViewInfo{ resource, valid_rtv_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, is_cube_map };
     }
 
     void D3D12DeviceTracer::StoreDSVAndResource(uint64_t dsv_descriptor, ID3D12Resource *resource, const D3D12_DEPTH_STENCIL_VIEW_DESC *depth_stencil_view_desc)

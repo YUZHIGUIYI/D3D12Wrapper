@@ -1,7 +1,6 @@
 #include <tracer/d3d12/d3d12_command_list_wrap.h>
 #include <tracer/d3d12/d3d12_device_wrap.h>
 #include <tracer/d3d12/d3d12_command_allocator_wrap.h>
-#include <tracer/core/wrapper_creators.h>
 #include <tracer/hooks/d3d12_hook_manager.h>
 
 WrappedID3D12GraphicsCommandList::WrappedID3D12GraphicsCommandList(ID3D12GraphicsCommandList *real_command_list, WrappedID3D12Device *wrapped_device,

@@ -10,7 +10,9 @@ namespace gfxshim
 		using IUnknownPtr = _com_ptr_t<_com_IIID<IUnknown, &__uuidof(IUnknown)>>;
 		IID m_riid;
 		IUnknownPtr m_object;
+		std::vector<ID3D12GraphicsCommandList *> m_cur_command_lists{};
 		std::atomic_uint32_t m_ref_count;
+		std::atomic_bool m_signal_queue_finish;
 
 		inline static std::unordered_map<void *, ID3D12CommandQueueWrapper *> s_d3d12_command_queue_manager{};
 		inline static std::mutex s_d3d12_command_queue_mutex{};
