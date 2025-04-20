@@ -12,7 +12,7 @@
 #include <corecrt_malloc.h>
 #endif
 
-namespace util::details
+namespace gfxshim::util::details
 {
     struct NullMutex
     {
@@ -122,7 +122,7 @@ namespace util::details
     };
 }
 
-namespace util
+namespace gfxshim::util
 {
     template <typename T>
     using ThreadSafeObjectPool = details::CustomizedObjectPool<T, std::mutex>;

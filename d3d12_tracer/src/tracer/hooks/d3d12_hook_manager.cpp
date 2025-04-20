@@ -11,11 +11,50 @@
 
 namespace gfxshim
 {
+	static void CheckTracerEnvironmentVariable(std::string_view env_variable, std::function<void(const std::string &env_value)> &&state_update_func)
+	{
+		if (const auto env_value = util::QueryEnvironmentVariable(env_variable); !env_value.empty())
+		{
+			state_update_func(env_value);
+		}
+	}
+
     D3D12HookManager::D3D12HookManager()
     : resource_manager_impl(std::make_unique<ResourceManagerImpl>())
     {
         AllocConsole();
         freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
+
+		// Check tracer environment variable
+		constexpr std::string_view data_trace_env = "ENABLE_DATA_TRACE";
+		constexpr std::string_view evil_infinite_dump_env = "ENABLE_EVIL_INFINITE_DUMP";
+		constexpr std::string_view dump_file_type_env = "DUMP_FILE_TYPE";
+		CheckTracerEnvironmentVariable(data_trace_env, [this] (const std::string &env_value) {
+			if (env_value == "True")
+			{
+				enable_data_trace = true;
+			} else
+			{
+				enable_data_trace = false;
+			}
+			D3D12_WRAPPER_DEBUG("Enable data trace: {}", enable_data_trace);
+		});
+		CheckTracerEnvironmentVariable(evil_infinite_dump_env, [this] (const std::string &env_value) {
+			if (env_value == "True")
+			{
+				enable_evil_infinite_dump = true;
+			} else
+			{
+				enable_evil_infinite_dump = false;
+			}
+			D3D12_WRAPPER_DEBUG("Enable evil infinite dump: {}", enable_evil_infinite_dump);
+		});
+		CheckTracerEnvironmentVariable(dump_file_type_env, [this] (const std::string &env_value) {
+			const auto dump_file_type = util::QueryDumpFileType(env_value);
+			final_dump_file_type = dump_file_type;
+			D3D12_WRAPPER_DEBUG("Dump file type: {}", util::ConvertDumpFileTypeToString(dump_file_type));
+		});
+
         D3D12_WRAPPER_DEBUG("Initialized D3D12 hook manager successfully");
     }
 
@@ -158,7 +197,8 @@ namespace gfxshim
     {
         if (command_list_tracer_storage.contains(command_list_pointer))
         {
-            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDraw(device, command_list_pointer);
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDraw(device, command_list_pointer,
+																							final_dump_file_type, enable_evil_infinite_dump && enable_data_trace);
         }
     }
 
@@ -166,7 +206,8 @@ namespace gfxshim
     {
         if (command_list_tracer_storage.contains(command_list_pointer))
         {
-            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDispatch(device, command_list_pointer);
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerDispatch(device, command_list_pointer,
+																								final_dump_file_type, enable_evil_infinite_dump && enable_data_trace);
         }
     }
 
@@ -174,23 +215,27 @@ namespace gfxshim
     {
         if (command_list_tracer_storage.contains(command_list_pointer))
         {
-            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerIndirect(device, command_list_pointer, command_signature_pointer);
+            command_list_tracer_storage[command_list_pointer]->CollectStagingResourcePerIndirect(device, command_list_pointer, command_signature_pointer,
+																								final_dump_file_type, enable_evil_infinite_dump && enable_data_trace);
         }
     }
 
     void D3D12HookManager::CollectStagingResourcePerBundle(ID3D12Device *device, ID3D12GraphicsCommandList *direct_command_list_pointer, ID3D12GraphicsCommandList *bundle_command_list_pointer)
     {
+		const bool enable_evil_infinite_dump_final = enable_evil_infinite_dump && enable_data_trace;
         if (command_list_tracer_storage.contains(direct_command_list_pointer) && command_list_tracer_storage.contains(bundle_command_list_pointer))
         {
             auto &&direct_command_list_tracer = command_list_tracer_storage[direct_command_list_pointer];
             auto &&bundle_command_list_tracer = command_list_tracer_storage[bundle_command_list_pointer];
             if (const uint32_t draw_count_in_bundle = bundle_command_list_tracer->QueryDrawCountInBundle(); draw_count_in_bundle > 0U)
             {
-                direct_command_list_tracer->CollectStagingResourcePerDraw(device, direct_command_list_pointer);
+                direct_command_list_tracer->CollectStagingResourcePerDraw(device, direct_command_list_pointer,
+																			final_dump_file_type, enable_evil_infinite_dump_final);
             }
             if (const uint32_t dispatch_count_in_bundle = bundle_command_list_tracer->QueryDispatchCountInBundle(); dispatch_count_in_bundle > 0U)
             {
-                direct_command_list_tracer->CollectStagingResourcePerDispatch(device, direct_command_list_pointer);
+                direct_command_list_tracer->CollectStagingResourcePerDispatch(device, direct_command_list_pointer,
+																				final_dump_file_type, enable_evil_infinite_dump_final);
             }
             // TODO: consider execute indirect
         }
@@ -213,15 +258,16 @@ namespace gfxshim
     }
 
     void D3D12HookManager::PerDrawAndDispatchDump(std::span<ID3D12GraphicsCommandList *> graphics_command_list_pointers, ID3D12Fence *fence, uint64_t fence_value)
-    {
+	{
+		const bool enable_evil_infinite_dump_final = enable_evil_infinite_dump && enable_data_trace;
         for (auto &&command_list_pointer : graphics_command_list_pointers)
         {
             if (command_list_tracer_storage.contains(command_list_pointer))
             {
                 auto &&command_list_tracer = command_list_tracer_storage[command_list_pointer];
-                command_list_tracer->PerDrawDump(fence, fence_value);
-                command_list_tracer->PerDispatchDump(fence, fence_value);
-                command_list_tracer->Advance();
+                command_list_tracer->PerDrawDump(fence, fence_value, final_dump_file_type, enable_evil_infinite_dump_final);
+                command_list_tracer->PerDispatchDump(fence, fence_value, final_dump_file_type, enable_evil_infinite_dump_final);
+                command_list_tracer->Advance(enable_evil_infinite_dump_final);
             }
         }
     }
@@ -245,6 +291,21 @@ namespace gfxshim
     {
         return dxgi_dispatch_table;
     }
+
+	util::DumpFileType D3D12HookManager::QueryDumpFileType() const
+	{
+		return final_dump_file_type;
+	}
+
+	bool D3D12HookManager::EnableDataTrace() const
+	{
+		return enable_data_trace;
+	}
+
+	bool D3D12HookManager::EnableEvilInfiniteDump() const
+	{
+		return enable_evil_infinite_dump;
+	}
 
     D3D12HookManager &D3D12HookManager::GetInstance()
     {

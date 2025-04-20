@@ -2,11 +2,27 @@
 // Created by ZZK on 2024/7/31.
 //
 
-#include <tracer/hooks/d3d12_tracer.h>
 #include <format>
+#include <tracer/hooks/d3d12_tracer.h>
+#include <tracer/hooks/d3d12_hook_manager.h>
 
 namespace gfxshim
 {
+	// Patch for bmp, png, jpeg and tiff formats
+#if !defined(far)
+#define far
+#endif
+#if !defined(FAR)
+#define FAR
+#endif
+#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+EXTERN_C const GUID FAR name
+
+	DEFINE_GUID(GUID_ContainerFormatBmp,  0x0af1d87e, 0xfcfe, 0x4188, 0xbd, 0xeb, 0xa7, 0x90, 0x64, 0x71, 0xcb, 0xe3);
+	DEFINE_GUID(GUID_ContainerFormatPng,  0x1b7cfaf4, 0x713f, 0x473c, 0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf);
+	DEFINE_GUID(GUID_ContainerFormatJpeg, 0x19e4a5aa, 0x5662, 0x4fc5, 0xa0, 0xc0, 0x17, 0x58, 0x02, 0x8e, 0x10, 0x57);
+	DEFINE_GUID(GUID_ContainerFormatTiff, 0x163bcc30, 0xe2e9, 0x4f0b, 0x96, 0x1d, 0xa3, 0xe9, 0xfd, 0xb7, 0x88, 0xa3);
+
     static void CollectRootParameter(const uint32_t parameter_index, const D3D12_ROOT_PARAMETER1 &root_parameter, RootSignatureInfo &root_signature_info)
     {
         if (root_parameter.ParameterType != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
@@ -473,7 +489,8 @@ namespace gfxshim
         return dump_finish.load(std::memory_order_seq_cst);
     }
 
-    void D3D12CommandListTracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
+    void D3D12CommandListTracer::CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer,
+																util::DumpFileType dump_file_type, bool enable_evil_infinite_dump)
     {
         // Record bundle command list draw count
         if (const auto command_list_type = command_list_pointer->GetType(); command_list_type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
@@ -482,7 +499,7 @@ namespace gfxshim
             return;
         }
         // For direct command list
-        if (CheckDrawCount() > draw_count_limit)
+        if (!enable_evil_infinite_dump && CheckDrawCount() > draw_count_limit)
         {
             return;  // TODO: test deferred per-draw-dump, limit to 180
         }
@@ -515,7 +532,13 @@ namespace gfxshim
                 capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             } else
             {
-                std::wstring render_target_filepath = std::format(L"{}_{}.dds", dump_decoration_rtv.decorated_string, rtv_index);
+                std::wstring render_target_filepath{};
+				if (dump_file_type == util::DumpFileType::BMP)
+				{
+					render_target_filepath = std::format(L"{}_{}.bmp", dump_decoration_rtv.decorated_string, rtv_index);
+				} else {
+					render_target_filepath = std::format(L"{}_{}.dds", dump_decoration_rtv.decorated_string, rtv_index);
+				}
                 DirectX::CaptureTextureSubresourceDeferred(device, command_list_pointer, target_resource, rtv_desc, capture_texture_desc, render_target_state.second.cube_map);
                 capture_rtv_texture_filepath_storage.emplace_back(std::move(render_target_filepath));
             }
@@ -565,9 +588,9 @@ namespace gfxshim
         D3D12_WRAPPER_DEBUG("End deferred per-draw-dump");
     }
 
-    void D3D12CommandListTracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value)
+    void D3D12CommandListTracer::PerDrawDump(ID3D12Fence *fence, uint64_t fence_value, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump)
     {
-        if (CheckExecutionCount() > execution_count_limit)
+        if (!enable_evil_infinite_dump && CheckExecutionCount() > execution_count_limit)
         {
             return;  // TODO: test deferred per-draw-dump, limit the number of executions
         }
@@ -586,7 +609,13 @@ namespace gfxshim
                 DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_rtv_texture_filepath_storage[i].c_str());
             } else
             {
-                DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_rtv_texture_filepath_storage[i].c_str());
+				if (dump_file_type == util::DumpFileType::BMP)
+				{
+					DirectX::SaveToWICFileImmediately(capture_texture_desc, DirectX::WIC_FLAGS_NONE, GUID_ContainerFormatBmp, capture_rtv_texture_filepath_storage[i].c_str());
+				} else
+				{
+					DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_rtv_texture_filepath_storage[i].c_str());
+				}
             }
         }
 
@@ -615,9 +644,9 @@ namespace gfxshim
         unordered_access_view_info_per_draw.clear();
     }
 
-    void D3D12CommandListTracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value)
+    void D3D12CommandListTracer::PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump)
     {
-        if (CheckExecutionCount() > execution_count_limit || per_dispatch_dump_ready.load(std::memory_order_seq_cst))
+        if (!enable_evil_infinite_dump && (CheckExecutionCount() > execution_count_limit || per_dispatch_dump_ready.load(std::memory_order_seq_cst)))
         {
             return;  // TODO: test deferred per-dispatch-dump, limit the number of executions
         }
@@ -638,7 +667,13 @@ namespace gfxshim
                 DirectX::SaveToBinFileImmediately(capture_texture_desc, capture_uav_texture_filepath_storage[i].c_str());
             } else
             {
-                DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_uav_texture_filepath_storage[i].c_str());
+				if (dump_file_type == util::DumpFileType::BMP)
+				{
+					DirectX::SaveToWICFileImmediately(capture_texture_desc, DirectX::WIC_FLAGS_NONE, GUID_ContainerFormatBmp, capture_rtv_texture_filepath_storage[i].c_str());
+				} else
+				{
+					DirectX::SaveToDDSFileImmediately(capture_texture_desc, DirectX::DDS_FLAGS_NONE, capture_uav_texture_filepath_storage[i].c_str());
+				}
             }
         }
 
@@ -649,10 +684,10 @@ namespace gfxshim
         per_dispatch_dump_ready.store(false, std::memory_order_seq_cst);
     }
 
-    void D3D12CommandListTracer::Advance()
+    void D3D12CommandListTracer::Advance(bool enable_evil_infinite_dump)
     {
         auto cur_execution_count = IncreaseExecutionCount();
-        if (cur_execution_count == execution_count_limit)
+        if (!enable_evil_infinite_dump && cur_execution_count == execution_count_limit)
         {
             SetDumpFinish();
         }
@@ -804,7 +839,8 @@ namespace gfxshim
         device_tracer.UpdateUAVStatePerDispatch(root_parameter_index, starting_gpu_descriptor, cur_blob_pointer, cbv_srv_uav_descriptor_heap, unordered_access_view_info_per_dispatch);
     }
 
-    void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer)
+    void D3D12CommandListTracer::CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer,
+																	util::DumpFileType dump_file_type, bool enable_evil_infinite_dump)
     {
         // Record bundle command list dispatch count
         if (const auto command_list_type = command_list_pointer->GetType(); command_list_type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
@@ -813,7 +849,7 @@ namespace gfxshim
             return;
         }
         // For direct command list or compute command list
-        if (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > dispatch_count_limit)
+        if (!enable_evil_infinite_dump && (per_dispatch_dump_ready.load(std::memory_order_seq_cst) || CheckDispatchCount() > dispatch_count_limit))
         {
             return;
         }
@@ -821,7 +857,6 @@ namespace gfxshim
         D3D12_WRAPPER_DEBUG("Begin to deferred per-dispatch-dump");
 
         uint32_t uav_index = 0;
-        // std::wstring dispatch_action_string = L"_Dispatch_" + std::to_wstring(dispatch_count.load(std::memory_order_seq_cst));
         std::wstring dispatch_action_string = std::format(L"Dispatch_{}", dispatch_count.load(std::memory_order_seq_cst));
         DumpDecoration dump_decoration_uav{ *this, dispatch_action_string, DecorationFlag::DumpUAV };
         for (auto &&unordered_access_state : unordered_access_view_info_per_dispatch)
@@ -846,7 +881,14 @@ namespace gfxshim
                 capture_uav_texture_filepath_storage.emplace_back(std::move(unordered_access_filepath));
             } else
             {
-                std::wstring unordered_access_filepath = std::format(L"{}_{}.dds", dump_decoration_uav.decorated_string, uav_index);
+                std::wstring unordered_access_filepath{};
+				if (dump_file_type == util::DumpFileType::BMP)
+				{
+					unordered_access_filepath = std::format(L"{}_{}.bmp", dump_decoration_uav.decorated_string, uav_index);
+				} else
+				{
+					unordered_access_filepath = std::format(L"{}_{}.dds", dump_decoration_uav.decorated_string, uav_index);
+				}
                 auto rtv_desc = TranslateUAVDescToRTVDesc(uav_desc);
                 DirectX::CaptureTextureSubresourceDeferred(device, command_list_pointer, target_resource, rtv_desc, capture_texture_desc, false,
                                                             resource_state, resource_state);
@@ -861,16 +903,17 @@ namespace gfxshim
         D3D12_WRAPPER_DEBUG("End deferred per-dispatch-dump");
     }
 
-    void D3D12CommandListTracer::CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer)
+    void D3D12CommandListTracer::CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer,
+																	util::DumpFileType dump_file_type, bool enable_evil_infinite_dump)
     {
         // TODO: consider dispatch
         D3D12_INDIRECT_ARGUMENT_TYPE indirect_type = device_tracer.QueryIndirectArgumentType(command_signature_pointer);
         if (indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW || indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED)
         {
-            CollectStagingResourcePerDraw(device, command_list_pointer);
+            CollectStagingResourcePerDraw(device, command_list_pointer, dump_file_type, enable_evil_infinite_dump);
         } else if (indirect_type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH)
         {
-            CollectStagingResourcePerDispatch(device, command_list_pointer);
+            CollectStagingResourcePerDispatch(device, command_list_pointer, dump_file_type, enable_evil_infinite_dump);
         } else
         {
             D3D12_WRAPPER_WARN("Non draw or dispatch command signature");

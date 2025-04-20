@@ -6,6 +6,7 @@
 
 #include <tracer/common/d3d12_wrap_common.h>
 #include <DirectXTexCustomized.h>
+#include <gfxshim/common/util.h>
 
 namespace DirectX
 {
@@ -176,10 +177,11 @@ namespace gfxshim
         HANDLE fence_event = nullptr;
 
         std::wstring per_draw_dump_prefix{};
-        uint32_t execution_count_limit = 5;
+		// Limit execution dump
+        const uint32_t execution_count_limit = 5;
         // Limit draw and dispatch dump
-        uint32_t draw_count_limit = 180;
-        uint32_t dispatch_count_limit = 10;
+        const uint32_t draw_count_limit = 180;
+        const uint32_t dispatch_count_limit = 10;
         // Used for bundle command list to stat the number of draw and dispatch
         uint32_t draw_count_in_bundle = 0;
         uint32_t dispatch_count_in_bundle = 0;
@@ -217,19 +219,19 @@ namespace gfxshim
         D3D12CommandListTracer &operator=(D3D12CommandListTracer &&) = delete;
 
         // Deferred per-draw-dump by recording copy command of read back resource
-        void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
+        void CollectStagingResourcePerDraw(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump = false);
 
         // Deferred per-dispatch-dump by recording copy command of read back resource
-        void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer);
+        void CollectStagingResourcePerDispatch(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump = false);
 
         // Deferred per-execute-indirect-dump by recording copy command of read back resource
-        void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer);
+        void CollectStagingResourcePerIndirect(ID3D12Device *device, ID3D12GraphicsCommandList *command_list_pointer, uint64_t command_signature_pointer, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump = false);
 
         // Deferred per-draw-dump after command queue signal, immediately dump into dds or binary file
-        void PerDrawDump(ID3D12Fence *fence, uint64_t fence_value);
+        void PerDrawDump(ID3D12Fence *fence, uint64_t fence_value, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump = false);
 
         // Deferred per-dispatch-dump after command queue signal, immediately dump into dds or binary file
-        void PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value);
+        void PerDispatchDump(ID3D12Fence *fence, uint64_t fence_value, util::DumpFileType dump_file_type, bool enable_evil_infinite_dump = false);
 
         // Clear render target view and depth stencil view information, invoke before update rtv and dsv states
         void ClearRTVAndDSVStatesPerDraw();
@@ -256,7 +258,7 @@ namespace gfxshim
         void UpdateUAVStatePerDispatch(uint32_t root_parameter_index, uint64_t starting_gpu_descriptor);
 
         // Increase execution count
-        void Advance();
+        void Advance(bool enable_evil_infinite_dump = false);
 
         // Query draw count in bundle command list
         uint32_t QueryDrawCountInBundle() const;

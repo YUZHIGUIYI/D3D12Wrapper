@@ -47,7 +47,7 @@ namespace gfxshim
 			return S_OK;
 		}
 		encode::WrapObject(riid, object);
-		D3D12_WRAPPER_DEBUG("Invoke ID3D12GraphicsCommandList10Wrapper::QueryInterface, get wrapped object");
+		// D3D12_WRAPPER_DEBUG("Invoke ID3D12GraphicsCommandList10Wrapper::QueryInterface, get wrapped object");
 		return result;
 	}
 

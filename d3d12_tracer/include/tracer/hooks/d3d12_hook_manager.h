@@ -5,8 +5,9 @@
 
 #include <gfxshim/common/d3d12_dispatch_table.h>
 #include <gfxshim/common/dxgi_dispatch_table.h>
-#include <gfxshim/common/object_pool.h>
 #include <tracer/hooks/d3d12_tracer.h>
+#include <gfxshim/common/util.h>
+#include <gfxshim/common/object_pool.h>
 
 class WrappedID3D12Device;
 class WrappedID3D12CommandQueue;
@@ -44,10 +45,11 @@ namespace gfxshim
         std::unordered_map<void *, WrappedResource> wrapped_resource_storage{};
         std::unordered_map<ID3D12GraphicsCommandList *, std::unique_ptr<D3D12CommandListTracer>> command_list_tracer_storage{};
         D3D12DeviceTracer device_tracer{};
-        // HMODULE d3d12_module = nullptr;
-        // HMODULE dxgi_module = nullptr;
         D3D12DispatchTable d3d12_dispatch_table{};
         DXGIDispatchTable  dxgi_dispatch_table{};
+		util::DumpFileType final_dump_file_type = util::DumpFileType::DDS;
+		bool enable_data_trace = true;
+		bool enable_evil_infinite_dump = false;
 
     private:
         D3D12HookManager();
@@ -69,6 +71,12 @@ namespace gfxshim
         [[nodiscard]] const D3D12DispatchTable &QueryD3D12DispatchTable() const;
 
         [[nodiscard]] const DXGIDispatchTable &QueryDXGIDispatchTable() const;
+
+		[[nodiscard]] util::DumpFileType QueryDumpFileType() const;
+
+		[[nodiscard]] bool EnableDataTrace() const;
+
+		[[nodiscard]] bool EnableEvilInfiniteDump() const;
 
         // Construct resource
         template <typename T, typename ... Args>
