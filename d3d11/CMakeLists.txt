@@ -15,7 +15,8 @@ target_sources(
         ${SRC_FILES}
         ${CMAKE_CURRENT_LIST_DIR}/d3d11_wrap.def)
 target_include_directories(d3d11 PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
-# target_compile_definitions(d3d11 PRIVATE ENABLE_D3D12_WRAPPER)
+target_link_libraries(d3d11 PUBLIC ${LINK_D3D11_OUTPUT})
+target_link_libraries(d3d11 PRIVATE GFXShimHeader)
 set_target_properties(d3d11 PROPERTIES
         CXX_STANDARD 20
         CXX_STANDARD_REQUIRED ON

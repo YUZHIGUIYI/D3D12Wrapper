@@ -355,14 +355,14 @@ namespace gfxshim
 		auto &&d3d12_dispatch_table = D3D12HookManager::GetInstance().QueryD3D12DispatchTable();
 		if (d3d12_dispatch_table.D3D12CreateDevice != nullptr)
 		{
-		    result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
-		    D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
-		    if (SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
-		    {
+            result = d3d12_dispatch_table.D3D12CreateDevice(encode::GetWrappedObject<IUnknown>(pAdapter), MinimumFeatureLevel, riid, ppDevice);
+            D3D12_WRAPPER_DEBUG("Invoke D3D12CreateDevice");
+            if (SUCCEEDED(result) && ppDevice != nullptr && (*ppDevice != nullptr))
+            {
 				auto unwrapped_device = *ppDevice;
 				encode::WrapObject(riid, ppDevice);
 				D3D12_WRAPPER_DEBUG("Real device pointer: {}, wrapped device pointer: {}", unwrapped_device, *ppDevice);
-		    }
+            }
 			return result;
 		}
 
